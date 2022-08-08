@@ -8,14 +8,19 @@ class QueueLogs
     log_ids = []
     begin
       Travis::Lock.exclusive('queue_logs', lock_options) do
-        logs = Log.where(scan_status: :ready_for_scan).order('id DESC').limit(Settings.queue_limit).pluck(:id)
-        logs.update(scan_status: :queued)
+        log_ids = Log.where(scan_status: :ready_for_scan).order('id DESC').limit(Settings.queue_limit).pluck(:id)
+        unless log_ids.empty?
+          Log.where(id: log_ids).update_all(scan_status: :queued, scan_status_updated_at: Time.now)
+          ScanTrackerEntry.create(log_ids.map { |id| { log_id: id } }) do |entry|
+            entry.scan_status = :queued
+          end
+          ProcessLogBatchJob.perform_later(log_ids)
+        end
       end
     rescue Travis::Lock::Redis::LockError => e
       Rails.logger.error(e.message)
     end
 
-    ProcessLogBatchJob.perform_later(log_ids) unless log_ids.empty?
   end
 
   private
