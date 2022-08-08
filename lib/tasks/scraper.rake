@@ -1,10 +1,9 @@
 task queue_logs: :environment do
-  puts 'Queueing logs...'
-
   loop do
+    Rails.logger.info('Queueing logs...')
     QueueLogs.new.call
     sleep(Settings.queue_interval)
   end
 
-  puts 'exit'
+  Rails.logger.info('exit')
 end
