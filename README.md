@@ -1,1 +1,1 @@
-# Travis Scanner
+# travis-scanner
