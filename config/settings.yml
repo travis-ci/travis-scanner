@@ -1,3 +1,5 @@
+default_queue_priority: 50
+low_queue_priority: 10
 queue_limit: 200
 queue_interval: 60
 redis:
