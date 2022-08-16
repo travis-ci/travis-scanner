@@ -37,11 +37,10 @@ class ManuallyScheduleLogs
   end
 
   def start_process_log_batch_job(log_ids)
-    log_ids_chunks = log_ids.each_slice(Settings.queue_limit)
-    log_ids_chunks.each { |log_ids_chunk|
+    log_ids.each_slice(Settings.queue_limit) do |log_ids_chunk|
       ProcessLogBatchJob.set(priority: Settings.low_queue_priority, queue: :low_priority_logs_for_scanning)
                         .perform_later(log_ids_chunk)
-    }
+    end
   end
 
   def lock_options
