@@ -14,9 +14,12 @@ class ProcessLogs
     begin
       Travis::Lock.exclusive('process_logs', lock_options) do
         logs = Log.where(id: @log_ids, scan_status: :queued)
-        logs.update_all(scan_status: :started, scan_status_updated_at: Time.now)
-        ScanTrackerEntry.create(@log_ids.map { |id| { log_id: id } }) do |entry|
-          entry.scan_status = :started
+        queued_log_ids = logs.map { |log| { log_id: log.id } }
+        ApplicationRecord.transaction do
+          logs.update_all(scan_status: :started, scan_status_updated_at: Time.now)
+          ScanTrackerEntry.create(queued_log_ids) do |entry|
+            entry.scan_status = :started
+          end
         end
       end
     rescue Travis::Lock::Redis::LockError => e
