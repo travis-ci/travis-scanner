@@ -4,24 +4,30 @@ require 'travis/lock'
 require 'redlock'
 
 class ManuallyScheduleLogs
-  def initialize(from, to, force)
-    @from = Time.parse(from)
-    @to = Time.parse(to)
+  def initialize(force)
     @force = force
   end
 
-  def call
-    Rails.logger.info("Scheduling logs from=[#{@from}] to=[#{@to}] with force=[#{@force}]")
+  def schedule_logs_by_time_frame(from, to)
+    Rails.logger.info("Scheduling logs from=[#{from}] to=[#{to}] with force=[#{@force}]")
+
     begin
       Travis::Lock.exclusive('schedule_logs', lock_options) do
-        log_ids = Log.where.not(:scan_status => filtered_statuses).where(created_at: @from..@to).pluck(:id)
-        unless log_ids.empty?
-          Log.where(id: log_ids).update_all(scan_status: :queued, scan_status_updated_at: Time.now)
-          ScanTrackerEntry.create(log_ids.map { |id| { log_id: id } }) do |entry|
-            entry.scan_status = :queued
-          end
-          start_process_log_batch_job(log_ids)
-        end
+        log_ids = Log.where.not(:scan_status => filtered_statuses).where(created_at: from..to).pluck(:id)
+        enqueue_logs(log_ids)
+      end
+    rescue Travis::Lock::Redis::LockError => e
+      Rails.logger.error(e.message)
+    end
+  end
+
+  def schedule_logs_by_job_ids(job_ids)
+    Rails.logger.info("Scheduling logs by job_ids=[#{job_ids}] with force=[#{@force}]")
+
+    begin
+      Travis::Lock.exclusive('schedule_logs', lock_options) do
+        log_ids = Log.where.not(:scan_status => filtered_statuses).where(job_id: job_ids).pluck(:id)
+        enqueue_logs(log_ids)
       end
     rescue Travis::Lock::Redis::LockError => e
       Rails.logger.error(e.message)
@@ -29,6 +35,16 @@ class ManuallyScheduleLogs
   end
 
   private
+
+  def enqueue_logs(log_ids)
+    unless log_ids.empty?
+      Log.where(id: log_ids).update_all(scan_status: :queued, scan_status_updated_at: Time.now)
+      ScanTrackerEntry.create(log_ids.map { |id| { log_id: id } }) do |entry|
+        entry.scan_status = :queued
+      end
+      start_process_log_batch_job(log_ids)
+    end
+  end
 
   def filtered_statuses
     filtered_statuses = [:queued, :ready_for_scan, :done, :started, :processing, :finalizing]
