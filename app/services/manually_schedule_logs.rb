@@ -22,7 +22,7 @@ class ManuallyScheduleLogs
   end
 
   def schedule_logs_by_job_ids(job_ids)
-    Rails.logger.info("Scheduling logs by job_ids=[#{job_ids}] with force=[#{@force}]")
+    Rails.logger.info("Scheduling logs by job_ids=[#{job_ids.inspect}] with force=[#{@force}]")
 
     begin
       Travis::Lock.exclusive('schedule_logs', lock_options) do
