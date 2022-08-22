@@ -21,6 +21,7 @@ class ProcessLogs
             entry.scan_status = :started
           end
         end
+        process_logs(logs)
       end
     rescue Travis::Lock::Redis::LockError => e
       Rails.logger.error(e.message)
@@ -29,11 +30,26 @@ class ProcessLogs
 
   private
 
+  def process_logs(logs)
+    unless logs.empty?
+      begin
+        logs.each do |log|
+          Rails.logger.info("Processing log with id=[#{log.id}] and content=[#{log.content}]")
+          # TODO - Call log processing logic
+          # TODO - Update log information according to the result
+        end
+      rescue Exception => e
+        Sentry.catch_exception(e)
+        Rails.logger.error(e.message)
+      end
+    end
+  end
+
   def lock_options
     @lock_options ||= {
       strategy: :redis,
-      url:      Settings.redis.url,
-      retries:  0
+      url: Settings.redis.url,
+      retries: 0
     }
   end
 end
