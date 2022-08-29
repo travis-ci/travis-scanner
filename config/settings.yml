@@ -1,0 +1,6 @@
+queue_limit: 200
+queue_interval: 60
+redis:
+  url: redis://redis:6379
+sentry:
+  dsn: fill-me

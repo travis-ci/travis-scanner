@@ -1,0 +1,9 @@
+FROM ruby:3.1.2
+
+WORKDIR /srv/app
+
+COPY . .
+
+EXPOSE 3000
+ENTRYPOINT ["/srv/app/entrypoint.sh"]
+CMD ["rails", "server", "-b", "0.0.0.0"]
