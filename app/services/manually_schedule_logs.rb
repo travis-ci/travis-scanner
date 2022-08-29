@@ -4,29 +4,24 @@ require 'travis/lock'
 require 'redlock'
 
 class ManuallyScheduleLogs
-  def initialize(force)
+  def initialize(from, to, force, log_ids)
+    @from = from
+    @to = to
     @force = force
+    @log_ids = log_ids
   end
 
-  def schedule_logs_by_time_frame(from, to)
-    Rails.logger.info("Scheduling logs from=[#{from}] to=[#{to}] with force=[#{@force}]")
-
+  def call
     begin
       Travis::Lock.exclusive('schedule_logs', lock_options) do
-        log_ids = Log.where.not(:scan_status => filtered_statuses).where(created_at: from..to).pluck(:id)
-        enqueue_logs(log_ids)
-      end
-    rescue Travis::Lock::Redis::LockError => e
-      Rails.logger.error(e.message)
-    end
-  end
-
-  def schedule_logs_by_job_ids(job_ids)
-    Rails.logger.info("Scheduling logs by job_ids=[#{job_ids.inspect}] with force=[#{@force}]")
-
-    begin
-      Travis::Lock.exclusive('schedule_logs', lock_options) do
-        log_ids = Log.where.not(:scan_status => filtered_statuses).where(job_id: job_ids).pluck(:id)
+        logs_query = Log.where(scan_status: [:ready_for_scan, nil])
+        logs_query.where(scan_status: :done) if @force
+        if @log_ids
+          logs_query.where(id: @log_ids)
+        else
+          logs_query.where(created_at: @from..@to)
+        end
+        log_ids = logs_query.pluck(:id)
         enqueue_logs(log_ids)
       end
     rescue Travis::Lock::Redis::LockError => e
@@ -44,12 +39,6 @@ class ManuallyScheduleLogs
       end
       start_process_log_batch_job(log_ids)
     end
-  end
-
-  def filtered_statuses
-    filtered_statuses = [:queued, :ready_for_scan, :done, :started, :processing, :finalizing]
-    filtered_statuses = [:queued, :ready_for_scan, :started, :processing, :finalizing] if @force
-    filtered_statuses
   end
 
   def start_process_log_batch_job(log_ids)
