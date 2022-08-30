@@ -22,7 +22,6 @@ OptionParser.new do |opts|
     rescue ArgumentError
       raise OptionParser::ParseError.new("Invalid end date provided")
     end
-    options[:end_date] = end_date
   end
   opts.on('--ids log_ids') do |log_ids|
     begin
