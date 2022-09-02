@@ -1,3 +1,7 @@
+# -*- frozen_string_literal: true
+
+require 'open3'
+
 module Travis
   module Scanner
     module Plugins
@@ -10,7 +14,11 @@ module Travis
         end
 
         def start(logs_path)
-          @waiter_thread = Thread.new { execute_plugin(logs_path) }
+          @waiter_thread = Thread.new do
+            Timeout.timeout(Settings.plugin_execution_timeout) do
+              execute_plugin(logs_path)
+            end
+          end
         end
 
         def result
@@ -19,7 +27,7 @@ module Travis
           rescue => e
             raise "An error happened during #{@scan_plugin_name} execution: #{e.message}\n#{e.backtrace.join("\n")}"
           end
-          @plugin_stderr.each_line { |line| Rails.logger.error("[#{@scan_plugin_name}]: #{line}") }
+          @plugin_stderr.each_line { |line| Rails.logger.info("[#{@scan_plugin_name}] STDERR: #{line}") }
           @plugin_stdout.each_line { |line| self.parse_line(line) }
           scan_end_time = @scan_end_time
 

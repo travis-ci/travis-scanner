@@ -13,24 +13,14 @@ class EnqueueProcessingLogsService < BaseLogsService
   private
 
   def enqueue_processing_logs
-    logs = Log.where(scan_status: :ready_for_scan)
+    logs = Log.ready_for_scan
               .order(id: :desc)
               .limit(Settings.queue_limit)
 
     log_ids = logs.pluck(:id).reverse
     return if log_ids.blank?
-
-    logs = Log.where(id: log_ids)
-
-    ApplicationRecord.transaction do
-      logs.update_all(
-        scan_status: :queued,
-        scan_status_updated_at: Time.zone.now
-      )
-
-      ScanTrackerEntry.create_entries(log_ids, :queued)
-
-      ProcessLogsJob.perform_later(log_ids)
-    end
+    
+    update_logs_status(log_ids, :queued)
+    ProcessLogsJob.perform_later(log_ids)
   end
 end

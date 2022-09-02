@@ -20,15 +20,13 @@ class ProcessLogsService < BaseLogsService
   private
 
   def process_log_entries
-    logs = Log.where(id: @log_ids, scan_status: :queued)
+    logs = Log.queued.where(id: @log_ids).to_a
 
-    log_ids = logs.pluck(:id)
+    log_ids = logs.map(&:id)
     return if log_ids.blank?
 
     FileUtils.mkdir_p(build_job_logs_dir)
-
     update_logs_status(log_ids, :started)
-
     process_logs(logs)
   ensure
     FileUtils.rm_rf(build_job_logs_dir)
@@ -37,7 +35,7 @@ class ProcessLogsService < BaseLogsService
   def process_logs(logs)
     logs.each(&method(:download_log))
     
-    run_scanner
+    run_scanner(logs)
   end
 
   def download_log(log)
@@ -46,7 +44,6 @@ class ProcessLogsService < BaseLogsService
     remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified)
     write_log_to_file(
       log.id,
-      log.job_id,
       remote_log.archived? ? remote_log.archived_log_content : log.content
     )
   rescue => e
@@ -73,7 +70,7 @@ class ProcessLogsService < BaseLogsService
     }
   end
 
-  def write_log_to_file(id, job_id, content)
+  def write_log_to_file(id, content)
     File.write(File.join(build_job_logs_dir, "#{id}.log"), content) if content.present?
   end
   
@@ -81,30 +78,54 @@ class ProcessLogsService < BaseLogsService
     @build_job_logs_dir ||= File.join("tmp/build_job_logs/#{Time.now.to_i}")
   end
   
-  def run_scanner
-    if Dir.entries(logs_dir).count == 2 # . and ..
-      # TODO: Set the right status here
-      update_logs_status(log_ids, :ended)
+  def run_scanner(logs)
+    log_ids = logs.map(&:id)
+    if Dir.entries(build_job_logs_dir).count == 2 # . and ..
+      errored_log_ids = Log.error.where(id: log_ids).pluck(:id)
+      update_logs_status(log_ids - errored_log_ids, :done)
 
       return
     end
     
-    Rails.logger.info JSON.dump(Travis::Scanner::Runner.new.run(logs_dir))
-    # TODO: Set the right status here
-    update_logs_status(log_ids, :ended)
+    plugins_result = Travis::Scanner::Runner.new.run(build_job_logs_dir)
+    
+    affected_log_ids = plugins_result.keys.map(&method(:log_id_from_filename))
+    unaffected_log_ids = log_ids - affected_log_ids
+    if unaffected_log_ids.present?
+      ApplicationRecord.transaction do
+        update_logs_status(unaffected_log_ids, :finalizing)
+        unaffected_log_ids.each do |log_id|
+          ScanResult.create(scan_result_entries) do |entry|
+            entry.content = {}
+            entry.job_id = grouped_logs[log_id].job_id
+            entry.owner_id = 1 # TODO: STUB
+            entry.owner_type = 'Repository' # TODO: STUB
+            entry.issues_found = 0
+            entry.archived = false
+            entry.token = 'STUB' # TODO: STUB
+          end
+        end
+        update_logs_status(unaffected_log_ids, :done)
+      end
+
+      return
+    end
+
+    grouped_logs = logs.each_with_object({}) do |log, memo|
+      memo[log.id] = log
+    end
+    CensorLogsService.new(affected_log_ids, grouped_logs, build_job_logs_dir, plugins_result).call if affected_log_ids.present?
   rescue => e
-    Rails.logger.error("An error happened during the plugins execution: #{e.message}")
+    Rails.logger.error("An error happened during the plugins execution: #{e.message}\n#{e.backtrace.join("\n")}")
     Sentry.with_scope do |scope|
       scope.set_tags(log_ids: log_ids.join(','))
       Sentry.capture_exception(e)
     end
+
     update_logs_status(log_ids, :error)
   end
-
-  def update_logs_status(log_ids, status)
-    ApplicationRecord.transaction do
-      Log.where(id: log_ids).update_all(scan_status: status, scan_status_updated_at: Time.now)
-      ScanTrackerEntry.create_entries(log_ids, scan_status)
-    end
+  
+  def log_id_from_filename(filename)
+    filename.sub('.log', '').to_i
   end
 end
