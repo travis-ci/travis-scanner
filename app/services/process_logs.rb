@@ -35,13 +35,35 @@ class ProcessLogs
       begin
         logs.each do |log|
           Rails.logger.info("Processing log with id=[#{log.id}] and content=[#{log.content}]")
-          # TODO - Call log processing logic
-          # TODO - Update log information according to the result
+          remote_log = Travis::RemoteLog.new(:aggregated_at => log.aggregated_at,
+                                             :archive_verified => log.archive_verified,
+                                             :archived_at => log.archived_at,
+                                             :archiving => log.archiving,
+                                             :content => log.content,
+                                             :created_at => log.created_at,
+                                             :id => log.id,
+                                             :job_id => log.job_id,
+                                             :purged_at => log.purged_at,
+                                             :removed_at => log.removed_at,
+                                             :removed_by_id => log.removed_by_id,
+                                             :updated_at => log.updated_at)
+          if remote_log.archived?
+            remote_log.archived_log_content
+            write_log_to_file(remote_log.id, remote_log.job_id, remote_log.archived_content)
+          else
+            write_log_to_file(remote_log.id, remote_log.job_id, remote_log.content)
+          end
         end
       rescue Exception => e
         Sentry.catch_exception(e)
         Rails.logger.error(e.message)
       end
+    end
+  end
+
+  def write_log_to_file(id, job_id, content)
+    File.open(File.join(__dir__, "../../log/#{id}-#{job_id}")) do |file|
+      file.write(content)
     end
   end
 
