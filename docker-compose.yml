@@ -1,0 +1,49 @@
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  image: travis_scanner
+  restart: on-failure
+  depends_on:
+    - postgres
+    - redis
+  volumes:
+    - .:/app:delegated
+    - bundle_volume:/usr/local/bundle
+  env_file:
+    - .env
+
+services:
+  travis_scanner:
+    <<: *app-base
+    container_name: travis_scanner
+    ports:
+      - 3000:3000
+  
+  travis_scanner_sidekiq:
+    <<: *app-base
+    container_name: travis_scanner_sidekiq
+    command: [ "bundle", "exec", "sidekiq" ]
+
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    env_file:
+      - .env
+
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - 6379:6379
+
+volumes:
+  postgres_data:
+  redis_data:
+  bundle_volume:
