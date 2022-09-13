@@ -3,3 +3,6 @@ redis:
 
 sidekiq_username: 'sidekiq'
 sidekiq_password: 'sidekiq'
+
+queue_limit: 200
+queue_interval: 60

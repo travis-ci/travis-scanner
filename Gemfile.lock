@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/travis-ci/travis-lock.git
+  revision: faf5eef9f607505921d821e6cdf829583d630063
+  specs:
+    travis-lock (0.1.1)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -354,6 +360,7 @@ DEPENDENCIES
   simplecov
   simplecov-console
   timecop
+  travis-lock!
 
 RUBY VERSION
    ruby 3.1.2p20

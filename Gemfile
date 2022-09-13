@@ -33,6 +33,8 @@ gem 'bootsnap', require: false
 # Settings store
 gem 'config'
 
+gem 'travis-lock', github: 'travis-ci/travis-lock'
+
 # Background jobs
 gem 'sidekiq'
 gem 'sidekiq-scheduler'
