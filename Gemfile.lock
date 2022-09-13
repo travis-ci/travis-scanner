@@ -275,6 +275,14 @@ GEM
     ruby-progressbar (1.11.0)
     rufus-scheduler (3.8.2)
       fugit (~> 1.1, >= 1.1.6)
+    sentry-rails (5.4.2)
+      railties (>= 5.0)
+      sentry-ruby (~> 5.4.2)
+    sentry-ruby (5.4.2)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+    sentry-sidekiq (5.4.2)
+      sentry-ruby (~> 5.4.2)
+      sidekiq (>= 3.0)
     shoulda-matchers (5.1.0)
       activesupport (>= 5.2.0)
     sidekiq (6.5.5)
@@ -337,6 +345,9 @@ DEPENDENCIES
   rubocop-performance
   rubocop-rails
   rubocop-rspec
+  sentry-rails
+  sentry-ruby
+  sentry-sidekiq
   shoulda-matchers
   sidekiq
   sidekiq-scheduler
