@@ -10,6 +10,8 @@ SimpleCov.formatters = SimpleCov::Formatter::MultiFormatter.new(
 
 # Code Coverage check
 SimpleCov.start 'rails' do
+  add_filter 'app/controllers/concerns/authentication.rb'
+  add_filter 'app/controllers/concerns/exception_handling.rb'
   add_filter 'app/jobs/application_job.rb'
   add_filter 'spec'
   add_filter 'vendor/'
