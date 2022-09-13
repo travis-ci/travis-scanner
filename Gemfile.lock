@@ -75,6 +75,9 @@ GEM
       msgpack (~> 1.2)
     brakeman (5.3.1)
     builder (3.2.4)
+    bullet (7.0.3)
+      activesupport (>= 3.0.0)
+      uniform_notifier (~> 1.11)
     concurrent-ruby (1.1.10)
     config (4.0.0)
       deep_merge (~> 1.2, >= 1.2.1)
@@ -296,6 +299,7 @@ GEM
     tzinfo (2.0.5)
       concurrent-ruby (~> 1.0)
     unicode-display_width (2.2.0)
+    uniform_notifier (1.16.0)
     websocket-driver (0.7.5)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
@@ -308,6 +312,7 @@ DEPENDENCIES
   annotate
   bootsnap
   brakeman
+  bullet
   config
   database_cleaner-active_record
   debug
