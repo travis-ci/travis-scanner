@@ -1,0 +1,2 @@
+sidekiq_username: <%= ENV.fetch('SIDEKIQ_USERNAME', 'admin') %>
+sidekiq_password: <%= ENV.fetch('SIDEKIQ_PASSWORD', SecureRandom.hex) %>

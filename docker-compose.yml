@@ -23,7 +23,7 @@ services:
   travis_scanner_sidekiq:
     <<: *app-base
     container_name: travis_scanner_sidekiq
-    command: [ "bundle", "exec", "sidekiq" ]
+    command: ["bundle", "exec", "sidekiq"]
 
   postgres:
     image: postgres:14-alpine
