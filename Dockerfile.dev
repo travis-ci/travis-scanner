@@ -1,16 +1,18 @@
 FROM ruby:3.1.2-alpine
 
-# Install requirements to run app
+# Install requirements to run the app
 RUN apk add --no-cache --update \
                                 git \
                                 build-base \
                                 postgresql-dev \
                                 tzdata
 
+# Set app workdir
 WORKDIR /app
 
 EXPOSE 3000
 
+# Set entrypoint
 ENTRYPOINT ["./docker-entrypoint.dev.sh"]
 
-CMD ["bundle", "exec", "bin/rails", "server", "-p", "3000", "-b", "0.0.0.0"]
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]
