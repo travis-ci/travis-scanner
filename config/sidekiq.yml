@@ -12,3 +12,7 @@
   - default
   - scheduled
   - low
+:schedule:
+  scheduler:
+    cron: '0 * * * * *'   # Runs once per minute
+    class: Travis::Scanner::Scheduler
