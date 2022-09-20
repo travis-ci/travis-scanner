@@ -10,7 +10,7 @@ gem 'rails', '~> 7.0.4'
 gem 'pg', '~> 1.1'
 
 # Use Redis for jobs and caching
-gem 'redis'
+gem 'redis', '< 5.0'
 
 # Use the Puma web server [https://github.com/puma/puma]
 gem 'puma', '~> 5.0'
@@ -32,6 +32,10 @@ gem 'bootsnap', require: false
 
 # Settings store
 gem 'config'
+
+gem 'travis-lock', github: 'travis-ci/travis-lock'
+# Redlock is needed for travis-lock to work
+gem 'redlock'
 
 # Background jobs
 gem 'sidekiq'
