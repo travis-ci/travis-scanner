@@ -30,7 +30,12 @@ Rails/HasManyOrHasOneDependent:
 Rails/InverseOf:
   Enabled: false
 
+Rails/SkipsModelValidations:
+  AllowedMethods:
+    - update_all
+
 Metrics/MethodLength:
+  Max: 20
   Exclude:
     - 'db/migrate/*'
 
