@@ -9,10 +9,13 @@
 :verbose: false
 :queues:
   - critical
+  - process_logs
   - default
   - scheduled
   - low
+
 :schedule:
-  scheduler:
-    cron: '0 * * * * *'   # Runs once per minute
-    class: Travis::Scanner::Scheduler
+  queue_processing_logs_job:
+    class: QueueProcessingLogsJob
+    queue: scheduled
+    cron: '0 */<%= Settings.queue_interval %> * * * *' # Runs when second = 0, every x minutes
