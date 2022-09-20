@@ -9,6 +9,9 @@ gem 'rails', '~> 7.0.4'
 # Use postgresql as the database for Active Record
 gem 'pg', '~> 1.1'
 
+# Use Redis for jobs and caching
+gem 'redis', '< 5.0'
+
 # Use the Puma web server [https://github.com/puma/puma]
 gem 'puma', '~> 5.0'
 
