@@ -3,7 +3,7 @@
 require 'travis/lock'
 require 'redlock'
 
-class ManuallyScheduleLogs
+class ManuallyScheduleLogsService < BaseLogsService
   def initialize(from, to, force, log_ids)
     @from = from
     @to = to
@@ -46,13 +46,5 @@ class ManuallyScheduleLogs
       ProcessLogBatchJob.set(priority: Settings.low_queue_priority, queue: :low_priority_logs_for_scanning)
                         .perform_later(log_ids_chunk)
     end
-  end
-
-  def lock_options
-    @lock_options ||= {
-      strategy: :redis,
-      url: Settings.redis.url,
-      retries: 0
-    }
   end
 end

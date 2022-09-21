@@ -40,4 +40,4 @@ if (options[:start_date] and not options[:end_date]) or (options[:end_date] and 
   raise OptionParser::ParseError.new("Both start date and end date must be provided")
 end
 
-ManuallyScheduleLogs.new(options[:start_date], options[:end_date], options[:log_ids], options[:force]).call
+ManuallyScheduleLogsService.new(options[:start_date], options[:end_date], options[:log_ids], options[:force]).call
