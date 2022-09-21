@@ -1,2 +1,33 @@
 redis:
   url: <%= ENV.fetch('REDIS_URL', 'redis://redis:6379/1') %>
+
+aws:
+  region: <%= ENV.fetch('TRAVIS_LOGS_S3_REGION', 'us-east-1') %>
+  access_key_id: <%= ENV['TRAVIS_LOGS_ACCESS_KEY_ID'] %>
+  secret_access_key: <%= ENV['TRAVIS_LOGS_SECRET_ACCESS_KEY'] %>
+  logs_archive_bucket: <%= ENV.fetch('TRAVIS_LOGS_ARCHIVE_BUCKET', 'archive-staging-qe1.travis-ci.com') %>
+  logs_archive_raw_bucket: <%= ENV.fetch('TRAVIS_LOGS_ARCHIVE_RAW_BUCKET', 'archive-raw-staging-qe1.travis-ci.com') %>
+
+sentry:
+  dsn: <%= ENV['SENTRY_DNS'] %>
+
+sidekiq_username: <%= ENV.fetch('SIDEKIQ_USERNAME', 'admin') %>
+sidekiq_password: <%= ENV.fetch('SIDEKIQ_PASSWORD', SecureRandom.hex) %>
+
+scanner_auth_token: <%= ENV.fetch('TRAVIS_SCANNER_AUTH_TOKEN', 'blabablablabla') %>
+
+queue_limit: <%= ENV.fetch('TRAVIS_SCANNER_QUEUE_LIMIT', 200).to_i %>
+queue_interval: <%= ENV.fetch('TRAVIS_SCANNER_QUEUE_INTERVAL', 1).to_i %> # minutes
+
+plugin_execution_timeout: <%= ENV.fetch('TRAVIS_SCANNER_PLUGIN_EXECUTION_TIMEOUT', 600).to_i %> # seconds
+
+scan_logs_availability_days: <%= ENV.fetch('TRAVIS_SCANNER_SCAN_LOGS_AVAILABILITY_DAYS', 7).to_i %> # days
+
+plugins:
+  trivy:
+    enabled: <%= ENV.fetch('TRAVIS_SCANNER_TRIVY_ENABLED', true).to_s =~ /^\s*(true|t|yes|y|1)\s*$/i %>
+    cmdline: <%= ENV.fetch('TRAVIS_SCANNER_TRIVY_CMDLINE', 'trivy') %>
+
+  detect_secrets:
+    enabled: <%= ENV.fetch('TRAVIS_SCANNER_DETECT_SECRETS_ENABLED', true).to_s =~ /^\s*(true|t|yes|y|1)\s*$/i %>
+    cmdline: <%= ENV.fetch('TRAVIS_SCANNER_DETECT_SECRETS_CMDLINE', 'detect-secrets') %>
