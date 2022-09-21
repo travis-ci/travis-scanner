@@ -41,6 +41,7 @@ Metrics/MethodLength:
 
 Metrics/BlockLength:
   Exclude:
+    - 'app/controllers/concerns/exception_handling.rb'
     - 'db/migrate/*'
     - 'spec/**/*'
 
