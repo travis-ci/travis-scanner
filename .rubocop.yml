@@ -34,12 +34,31 @@ Rails/SkipsModelValidations:
   AllowedMethods:
     - update_all
 
+Rails/UnknownEnv:
+  Environments:
+    - development
+    - staging
+    - production
+
+Metrics/AbcSize:
+  Max: 100
+
+Metrics/CyclomaticComplexity:
+  Max: 30
+
+Metrics/PerceivedComplexity:
+  Max: 30
+
+Metrics/ClassLength:
+  Max: 200
+
 Metrics/MethodLength:
-  Max: 20
+  Max: 60
   Exclude:
     - 'db/migrate/*'
 
 Metrics/BlockLength:
+  Max: 50
   Exclude:
     - 'app/controllers/concerns/exception_handling.rb'
     - 'db/migrate/*'
