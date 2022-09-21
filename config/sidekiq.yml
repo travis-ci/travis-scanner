@@ -9,6 +9,15 @@
 :verbose: false
 :queues:
   - critical
+  - process_logs
   - default
   - scheduled
+  - enqueue_processing_logs
+  - manually_enqueue_processing_logs
   - low
+
+:schedule:
+  enqueue_processing_logs_job:
+    class: EnqueueProcessingLogsJob
+    queue: enqueue_processing_logs
+    cron: '0 */<%= ENV.fetch('QUEUE_INTERVAL', 1) %> * * * *' # Runs when second = 0, every x minutes

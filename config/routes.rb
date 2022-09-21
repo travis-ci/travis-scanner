@@ -21,6 +21,8 @@ Rails.application.routes.draw do
   defaults format: :json do
   end
 
+  resources :scan_results, only: [:index, :show]
+
   # this needs to go last!
   match '/:anything', to: 'application_public#routing_error', constraints: { anything: /.*/ }, via: :all
 end
