@@ -34,6 +34,15 @@ Rails/SkipsModelValidations:
   AllowedMethods:
     - update_all
 
+Rails/UnknownEnv:
+  Environments:
+    - development
+    - staging
+    - production
+
+Metrics/AbcSize:
+  Max: 20
+
 Metrics/MethodLength:
   Max: 20
   Exclude:
