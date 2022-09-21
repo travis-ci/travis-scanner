@@ -34,6 +34,9 @@ Rails/SkipsModelValidations:
   AllowedMethods:
     - update_all
 
+Metrics/AbcSize:
+  Max: 20
+
 Metrics/MethodLength:
   Max: 20
   Exclude:
