@@ -43,7 +43,7 @@ module ExceptionHandling
 
     def log_error(error)
       Rails.logger.error(error)
-      Sentry.capture_exception(error) if Settings.sentry_dsn.present?
+      Sentry.capture_exception(error) if Settings.sentry.dsn.present?
     end
   end
 end
