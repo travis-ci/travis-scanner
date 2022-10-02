@@ -1,10 +1,7 @@
 require 'forwardable'
 require 'json'
 
-require 'faraday'
-require 'faraday_middleware'
 require 'dry-struct'
-
 
 module Travis
   class RemoteLog < Dry::Struct
@@ -110,116 +107,8 @@ module Travis
       { 'log' => ret }
     end
 
-    def clear!(user = nil)
-      message = ''
-      removed_by = nil
-
-      if user.respond_to?(:name) && user.respond_to?(:id)
-        message = "Log removed by #{user.name} at #{Time.now.utc}"
-        removed_by = user.id
-      end
-
-      updated = remote.write_content_for_job_id(
-        job_id,
-        content: message,
-        removed_by: removed_by
-      )
-
-      attributes.keys.each do |k|
-        send("#{k}=", updated.send(k))
-      end
-
-      message
-    end
-
     def remote
       @remote ||= Travis::RemoteLog::Remote.new(platform: platform)
-    end
-
-    class Client
-      Error = Class.new(StandardError)
-
-      def initialize(url: '', token: '', platform: :default)
-        @url = url
-        @token = token
-        @platform = platform
-      end
-
-      attr_reader :url, :token, :platform
-      private :url
-      private :token
-
-      def find_by_id(log_id)
-        find_by('id', log_id)
-      end
-
-      def find_by_job_id(job_id)
-        find_by('job_id', job_id)
-      end
-
-      def find_id_by_job_id(job_id)
-        resp = conn.get do |req|
-          req.url "logs/#{job_id}/id"
-          req.params['source'] = 'api'
-        end
-        return nil unless resp.success?
-        JSON.parse(resp.body).fetch('id')
-      end
-
-      def find_parts_by_job_id(job_id, after: nil, part_numbers: [])
-        resp = conn.get do |req|
-          req.url "log-parts/#{job_id}"
-          req.params['after'] = after unless after.nil?
-          unless part_numbers.empty?
-            req.params['part_numbers'] = part_numbers.map(&:to_s).join(',')
-          end
-        end
-        unless resp.success?
-          raise Error, "failed to fetch log-parts job_id=#{job_id}"
-        end
-        JSON.parse(resp.body).fetch('log_parts').map do |part|
-          RemoteLogPart.new(part)
-        end
-      end
-
-      def write_content_for_job_id(job_id, content: '', removed_by: nil)
-        resp = conn.put do |req|
-          req.url "logs/#{job_id}"
-          req.params['source'] = 'api'
-          req.params['removed_by'] = removed_by unless removed_by.nil?
-          req.headers['Content-Type'] = 'application/octet-stream'
-          req.body = content
-        end
-        unless resp.success?
-          raise Error, "failed to write content job_id=#{job_id}"
-        end
-        RemoteLog.new(JSON.parse(resp.body))
-      end
-
-      private def find_by(by, id)
-        resp = conn.get do |req|
-          req.url "logs/#{id}", by: by
-          req.params['source'] = 'api'
-        end
-        return nil unless resp.success?
-        remote_log = RemoteLog.new(JSON.parse(resp.body))
-        remote_log.platform = platform
-        remote_log
-      end
-
-      private def conn
-        @conn ||= Faraday.new(http_options.merge(url: url)) do |c|
-          c.request :authorization, :token, token
-          c.request :retry, max: 5, interval: 0.1, backoff_factor: 2
-          c.use :instrumentation
-          c.use OpenCensus::Trace::Integrations::FaradayMiddleware if Travis::Api::App::Middleware::OpenCensus.enabled?
-          c.adapter :net_http_persistent
-        end
-      end
-
-      private def http_options
-        { ssl: Travis.config.ssl.to_h }
-      end
     end
 
     class ArchiveClient
@@ -264,18 +153,12 @@ module Travis
     end
 
     class Remote
-      private def clients
-        @clients ||= {}
-      end
 
       private def archive_clients
         @archive_clients ||= {}
       end
 
       extend Forwardable
-
-      def_delegators :client, :find_by_job_id, :find_by_id,
-        :find_id_by_job_id, :find_parts_by_job_id, :write_content_for_job_id
 
       def_delegators :archive_client, :fetch_archived_url, :fetch_archived_log_content
 
@@ -294,21 +177,8 @@ module Travis
         end
       end
 
-      private def client
-        clients[platform]
-      end
-
       private def archive_client
         archive_clients[platform]
-      end
-
-      private def create_client
-        Travis.logger.info("logs_api.url: #{platform_config("logs_api.url")}")
-        Client.new(
-          url: platform_config("logs_api.url"),
-          token: platform_config("logs_api.token"),
-          platform: platform
-        )
       end
 
       private def create_archive_client
