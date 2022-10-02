@@ -3,25 +3,24 @@ require 'json'
 
 require 'faraday'
 require 'faraday_middleware'
-require 'virtus'
+require 'dry-struct'
 
 
 module Travis
-  class RemoteLog
-    include Virtus.model(nullify_blank: true)
+  class RemoteLog < Dry::Struct
 
-    attribute :aggregated_at, Time
-    attribute :archive_verified, Boolean, default: false
-    attribute :archived_at, Time
-    attribute :archiving, Boolean, default: false
-    attribute :content, String
-    attribute :created_at, Time
-    attribute :id, Integer
-    attribute :job_id, Integer
-    attribute :purged_at, Time
-    attribute :removed_at, Time
-    attribute :removed_by_id, Integer
-    attribute :updated_at, Time
+    attribute :aggregated_at, Types::Strict::Time.optional
+    attribute :archive_verified, Types::Strict::Boolean.defaut(false)
+    attribute :archived_at, Types::Strict::Time.optional
+    attribute :archiving, Types::Strict::Boolean.defaut(false)
+    attribute :content, Types::Strict::String.optional
+    attribute :created_at, Types::Strict::Time.optional
+    attribute :id, Types::Strict::Integer.optional
+    attribute :job_id, Types::Strict::Integer.optional
+    attribute :purged_at, Types::Strict::Time.optional
+    attribute :removed_at, Types::Strict::Time.optional
+    attribute :removed_by_id, Types::Strict::Integer.optional
+    attribute :updated_at, Types::Strict::Time.optional
 
     def platform=(platform)
       @platform = platform
@@ -335,13 +334,12 @@ module Travis
     end
   end
 
-  class RemoteLogPart
-    include Virtus.model(nullify_blank: true)
+  class RemoteLogPart < Dry::Struct
 
-    attribute :content, String
-    attribute :final, Boolean
-    attribute :id, Integer
-    attribute :number, Integer
+    attribute :content, Types::Strict::String.optional
+    attribute :final, Types::Strict::Boolean.optional
+    attribute :id, Types::Strict::Integer.optional
+    attribute :number, Types::Strict::Integer.optional
 
     def as_json(**_)
       attributes.slice(*%i(content final number))

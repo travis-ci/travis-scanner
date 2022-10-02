@@ -49,9 +49,8 @@ gem 'sentry-ruby'
 gem 'sentry-rails'
 gem 'sentry-sidekiq'
 
-gem 'faraday'
-gem 'faraday_middleware'
-gem 'virtus'
+# Typed struct classes
+gem 'dry-struct'
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
