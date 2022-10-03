@@ -5,7 +5,6 @@ require 'dry-struct'
 
 module Travis
   class RemoteLog < Dry::Struct
-
     attribute :aggregated_at, Types::Strict::Time.optional
     attribute :archive_verified, Types::Strict::Boolean.defaut(false)
     attribute :archived_at, Types::Strict::Time.optional
@@ -19,9 +18,7 @@ module Travis
     attribute :removed_by_id, Types::Strict::Integer.optional
     attribute :updated_at, Types::Strict::Time.optional
 
-    def platform=(platform)
-      @platform = platform
-    end
+    attr_writer :platform
 
     def platform
       @platform || :default
@@ -33,6 +30,7 @@ module Travis
 
     def removed_by
       return nil unless removed_by_id
+
       @removed_by ||= User.find(removed_by_id)
     end
 
@@ -42,22 +40,13 @@ module Travis
 
     def parts(after: nil, part_numbers: [])
       return solo_part if removed? || aggregated?
+
       remote.find_parts_by_job_id(
         job_id, after: after, part_numbers: part_numbers
       )
     end
 
     alias log_parts parts
-
-    private def solo_part
-      [
-        RemoteLogPart.new(
-          number: 0,
-          content: content,
-          final: true
-        )
-      ]
-    end
 
     def aggregated?
       !!aggregated_at
@@ -72,7 +61,7 @@ module Travis
     end
 
     def archived_log_content
-      @archived_content ||= remote.fetch_archived_log_content(job_id)
+      @archived_log_content ||= remote.fetch_archived_log_content(job_id)
     end
 
     def to_json(chunked: false, after: nil, part_numbers: [])
@@ -92,7 +81,7 @@ module Travis
 
       unless removed_at.nil?
         ret['removed_at'] = removed_at.utc.to_s
-        ret['removed_by'] = removed_by.name || removed_by.login
+        ret['removed_by'] = removed_by_name
       end
 
       if chunked
@@ -101,10 +90,18 @@ module Travis
           part_numbers: part_numbers
         ).map(&:as_json)
       else
-        ret['body'] = archived_log_content || content
+        ret['body'] = log_content
       end
 
       { 'log' => ret }
+    end
+
+    def removed_by_name
+      removed_by.name || removed_by.login
+    end
+
+    def log_content
+      archived_log_content || content
     end
 
     def remote
@@ -128,36 +125,36 @@ module Travis
       private :bucket_name
 
       def fetch_archived_url(job_id, expires: nil)
-        expires = expires || Time.now.to_i + 30
+        expires ||= (Time.now.to_i + 30)
         file = fetch_archived(job_id)
         return nil if file.nil?
         return file.public_url if file.public?
+
         file.url(expires)
       end
 
       def fetch_archived_log_content(job_id)
         file = fetch_archived(job_id)
-        return "" if file.nil?
-        file.body.force_encoding("UTF-8")
+        return '' if file.nil?
+
+        file.body.force_encoding('UTF-8')
       end
 
-      private def fetch_archived(job_id)
+      private
+
+      def fetch_archived(job_id)
         candidates = s3.directories.get(
           bucket_name,
           prefix: "jobs/#{job_id}/log.txt"
         ).files
 
         return nil if candidates.empty?
+
         candidates.first
       end
     end
 
     class Remote
-
-      private def archive_clients
-        @archive_clients ||= {}
-      end
-
       extend Forwardable
 
       def_delegators :archive_client, :fetch_archived_url, :fetch_archived_log_content
@@ -170,18 +167,20 @@ module Travis
         archive_clients[self.platform] = create_archive_client
       end
 
-      private def platform_config(path)
-        path = "#{platform}_#{path}" unless platform == :default
-        path.split('.').inject(Travis.config) do |config, key|
-          config[key]
-        end
+      private
+
+      def archive_s3_config
+        @archive_s3_config ||= platform_config('log_options.s3').to_h
       end
 
-      private def archive_client
-        archive_clients[platform]
+      def archive_s3_bucket
+        @archive_s3_bucket ||= [
+          Travis.env == 'staging' ? 'archive-staging' : 'archive',
+          platform_config('host').split('.')[-2, 2]
+        ].flatten.compact.join('.')
       end
 
-      private def create_archive_client
+      def create_archive_client
         Travis.logger.info("archive_s3_config.access_key_id: #{archive_s3_config[:access_key_id]}")
         Travis.logger.info("s3_bucket: #{archive_s3_bucket}")
         ArchiveClient.new(
@@ -191,28 +190,43 @@ module Travis
         )
       end
 
-      private def archive_s3_bucket
-        @archive_s3_bucket ||= [
-          Travis.env == 'staging' ? 'archive-staging' : 'archive',
-          platform_config("host").split('.')[-2, 2]
-        ].flatten.compact.join('.')
+      def archive_client
+        archive_clients[platform]
       end
 
-      private def archive_s3_config
-        @archive_s3_config ||= platform_config("log_options.s3").to_h
+      def platform_config(path)
+        path = "#{platform}_#{path}" unless platform == :default
+        path.split('.').inject(Travis.config) do |config, key|
+          config[key]
+        end
       end
+
+      def archive_clients
+        @archive_clients ||= {}
+      end
+    end
+
+    private
+
+    def solo_part
+      [
+        RemoteLogPart.new(
+          number: 0,
+          content: content,
+          final: true
+        )
+      ]
     end
   end
 
   class RemoteLogPart < Dry::Struct
-
     attribute :content, Types::Strict::String.optional
     attribute :final, Types::Strict::Boolean.optional
     attribute :id, Types::Strict::Integer.optional
     attribute :number, Types::Strict::Integer.optional
 
     def as_json(**_)
-      attributes.slice(*%i(content final number))
+      attributes.slice(*%i[content final number])
     end
   end
 end

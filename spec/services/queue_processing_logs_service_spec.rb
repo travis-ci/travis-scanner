@@ -35,9 +35,11 @@ RSpec.describe QueueProcessingLogsService, type: :service do
     context 'when there are no ready for scan logs' do
       let!(:log) { create :log }
 
+      before { allow(ProcessLogsJob).to receive(:perform_later).and_call_original }
+
       it 'does not queue the log for scan' do
         expect { service.call }.not_to change(ScanTrackerEntry, :count)
-        expect(ProcessLogsJob).not_to receive(:perform_later)
+        expect(ProcessLogsJob).not_to have_received(:perform_later)
 
         log.reload
         expect(log.scan_status).to be_nil
