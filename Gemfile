@@ -50,6 +50,7 @@ gem 'sentry-rails'
 gem 'sentry-sidekiq'
 
 # Typed struct classes
+gem 'dry-types'
 gem 'dry-struct'
 
 group :development, :test do

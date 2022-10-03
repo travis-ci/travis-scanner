@@ -342,6 +342,7 @@ DEPENDENCIES
   database_cleaner-active_record
   debug
   dry-struct
+  dry-types
   factory_bot_rails
   faker
   lograge
