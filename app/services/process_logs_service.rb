@@ -33,15 +33,11 @@ class ProcessLogsService < BaseLogsService
       ScanTrackerEntry.create_entries(log_ids, :started)
     end
 
-    process_logs(logs)
+    process_logs(logs_query)
   end
 
   def process_logs(logs)
-    return if logs.empty?
-
-    logs.each do |log|
-      process_log(log)
-    end
+    logs&.each { |log| process_log(log) }
   end
 
   def process_log(log)
