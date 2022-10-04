@@ -1,25 +1,26 @@
-class QueueProcessingLogsService < BaseLogsService
+class EnqueueProcessingLogsService < BaseLogsService
   def call
-    Rails.logger.info('Queueing logs...')
+    Rails.logger.info('Enqueueing Processing Logs...')
 
-    begin
-      Travis::Lock.exclusive('queue_logs', lock_options) do
-        update_log_entries
-      end
-    rescue => e
-      Rails.logger.error(e.message)
+    Travis::Lock.exclusive('enqueue_processing_logs', lock_options) do
+      enqueue_processing_logs
     end
+  rescue => e
+    Rails.logger.error(e.message)
+    Sentry.capture_exception(e)
   end
 
   private
 
-  def update_log_entries
+  def enqueue_processing_logs
     logs = Log.where(scan_status: :ready_for_scan)
               .order(id: :desc)
               .limit(Settings.queue_limit)
-    return unless logs.exists?
 
     log_ids = logs.pluck(:id).reverse
+    return if log_ids.blank?
+
+    logs = Log.where(id: log_ids)
 
     ApplicationRecord.transaction do
       logs.update_all(

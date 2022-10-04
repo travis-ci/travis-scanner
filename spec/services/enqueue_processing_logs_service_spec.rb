@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe QueueProcessingLogsService, type: :service do
+RSpec.describe EnqueueProcessingLogsService, type: :service do
   subject(:service) { described_class }
 
   describe '#call' do

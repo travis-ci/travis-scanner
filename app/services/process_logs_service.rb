@@ -8,24 +8,26 @@ class ProcessLogsService < BaseLogsService
   def call
     Rails.logger.info("Received log_ids: #{@log_ids.inspect}")
 
-    begin
-      Travis::Lock.exclusive('process_logs', lock_options) do
-        update_log_entries
-      end
-    rescue => e
-      Rails.logger.error(e.message)
+    Travis::Lock.exclusive('process_logs', lock_options) do
+      process_log_entries
     end
+  rescue => e
+    Rails.logger.error(e.message)
+    Sentry.capture_exception(e)
   end
 
   private
 
-  def update_log_entries
-    logs_query = Log.where(id: @log_ids, scan_status: :queued)
-    log_ids = logs_query.pluck(:id)
-    return if log_ids.empty?
+  def process_log_entries
+    logs = Log.where(id: @log_ids, scan_status: :queued)
+
+    log_ids = logs.pluck(:id)
+    return if log_ids.blank?
+
+    logs = Log.where(id: log_ids)
 
     ApplicationRecord.transaction do
-      logs_query.update_all(
+      logs.update_all(
         scan_status: :started,
         scan_status_updated_at: Time.zone.now
       )
@@ -33,7 +35,7 @@ class ProcessLogsService < BaseLogsService
       ScanTrackerEntry.create_entries(log_ids, :started)
     end
 
-    process_logs(logs_query)
+    process_logs(logs)
   end
 
   def process_logs(logs)
@@ -42,42 +44,44 @@ class ProcessLogsService < BaseLogsService
 
   def process_log(log)
     Rails.logger.info("Processing log with id=[#{log.id}]")
+
     remote_log = Travis::RemoteLog.new(remote_log_params(log))
     write_log_to_file(
       remote_log.id,
       remote_log.job_id,
       remote_log.archived? ? remote_log.archived_log_content : remote_log.content
     )
-  rescue StandardError => e
-    handle_processing_error(e, log)
+  rescue => e
+    handle_process_log_error(log)
+
+    Rails.logger.error(e.message)
+    Sentry.capture_exception(e)
   end
 
-  def handle_processing_error(exception, log)
+  def handle_process_log_error(log)
     ApplicationRecord.transaction do
-      log.scan_status = :error
-      log.scan_status_updated_at = Time.zone.now
-      log.save
+      log.update(
+        scan_status: :error,
+        scan_status_updated_at: Time.zone.now
+      )
 
-      ScanTrackerEntry.create(log_id: log.id, scan_status: :error)
+      ScanTrackerEntry.create_entries([log.id], :error)
     end
-
-    Sentry.capture_exception(exception)
-    Rails.logger.error(exception.message)
   end
 
   def remote_log_params(log)
     {
-      aggregated_at: log.aggregated_at,
-      archive_verified: log.archive_verified,
-      archived_at: log.archived_at,
-      archiving: log.archiving,
-      content: log.content,
-      created_at: log.created_at,
       id: log.id,
       job_id: log.job_id,
+      aggregated_at: log.aggregated_at,
+      archive_verified: log.archive_verified,
+      archiving: log.archiving,
+      archived_at: log.archived_at,
       purged_at: log.purged_at,
-      removed_at: log.removed_at,
       removed_by_id: log.removed_by,
+      removed_at: log.removed_at,
+      content: log.content,
+      created_at: log.created_at,
       updated_at: log.updated_at
     }
   end
