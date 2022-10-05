@@ -1,3 +1,7 @@
+module Types
+  include Dry.Types()
+end
+
 module Travis
   class RemoteLog < Dry::Struct
     attribute :aggregated_at, Types::Strict::Time.optional
@@ -19,18 +23,8 @@ module Travis
       @platform || :default
     end
 
-    def job
-      @job ||= Job.find(job_id)
-    end
-
-    def removed_by
-      return nil unless removed_by_id
-
-      @removed_by ||= User.find(removed_by_id)
-    end
-
     def removed?
-      !removed_by_id.nil?
+      removed_by_id.present?
     end
 
     def parts(after: nil, part_numbers: [])
@@ -41,14 +35,12 @@ module Travis
       )
     end
 
-    alias log_parts parts
-
     def aggregated?
-      !!aggregated_at
+      aggregated_at.present?
     end
 
     def archived?
-      !!(!archived_at.nil? && archive_verified?)
+      archived_at.present? && archive_verified?
     end
 
     def archived_url(expires: nil)
@@ -74,7 +66,7 @@ module Travis
         'type' => 'Log'
       }
 
-      unless removed_at.nil?
+      if removed_at.present?
         ret['removed_at'] = removed_at.utc.to_s
         ret['removed_by'] = removed_by_name
       end
