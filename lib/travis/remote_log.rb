@@ -1,8 +1,3 @@
-require 'forwardable'
-require 'json'
-
-require 'dry-struct'
-
 module Travis
   class RemoteLog < Dry::Struct
     attribute :aggregated_at, Types::Strict::Time.optional
