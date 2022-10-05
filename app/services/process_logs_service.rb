@@ -87,6 +87,6 @@ class ProcessLogsService < BaseLogsService
   end
 
   def write_log_to_file(id, job_id, content)
-    File.write("/srv/app/log/#{id}-#{job_id}.log", content)
+    File.write(File.join(__dir__, "../../build_job_logs/#{id}-#{job_id}.log"), content)
   end
 end
