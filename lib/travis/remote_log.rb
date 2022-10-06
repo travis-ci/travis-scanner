@@ -34,6 +34,7 @@ module Travis
     def fetch_archived_log_content(job_id)
       response = archive_client.get_object({ bucket: archive_bucket, key: "jobs/#{job_id}/log.txt" })
       return '' if file.nil?
+
       response.body.string
     end
 
