@@ -32,8 +32,8 @@ module Travis
     end
 
     def fetch_archived_log_content(job_id)
-      response = archive_client.get_object({ bucket: archive_bucket, key: "jobs/#{job_id}/log.txt" })
-      return '' if file.nil?
+      response = archive_client.get_object(bucket: archive_bucket, key: "jobs/#{job_id}/log.txt")
+      return '' unless response
 
       response.body.string
     end
@@ -51,9 +51,7 @@ module Travis
 
     def platform_config(path)
       path = "#{platform}_#{path}" unless platform == :default
-      path.split('.').inject(Travis.config) do |config, key|
-        config[key]
-      end
+      path.split('.').inject(Travis.config) { |config, key| config[key] }
     end
   end
 end
