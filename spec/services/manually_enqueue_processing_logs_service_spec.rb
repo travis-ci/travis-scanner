@@ -1,39 +1,21 @@
 require 'rails_helper'
 
 RSpec.describe ManuallyEnqueueProcessingLogsService, type: :service do
-  subject(:service) { described_class }
+  subject(:service) { described_class.new(params) }
+
+  let(:params) {{
+    :log_ids => [log.id],
+    :from => from,
+    :to => to,
+    :force => force
+  }}
 
   describe '#call' do
-    context 'when there are ready for scan logs' do
-      let!(:log) { create :log, scan_status: :ready_for_scan }
-
-      before { allow(ProcessLogsJob).to receive(:perform_later).with([log.id]).once }
-
-      it 'queue the log for scan' do
-        expect { service.call }.to change(ScanTrackerEntry, :count).by(1)
-        expect(ProcessLogsJob).to have_received(:perform_later)
-
-        log.reload
-        expect(log.scan_status).to eq('queued')
-      end
-    end
-
-    context 'batch queueing' do
-      context 'when there are ready for scan logs' do
-        let!(:logs) { create_list(:log, Settings.queue_limit + 1, scan_status: :ready_for_scan) }
-        let(:log_ids) { logs.map(&:id).sort.reverse.first(Settings.queue_limit).reverse }
-
-        before { allow(ProcessLogsJob).to receive(:perform_later).with(log_ids).once }
-
-        it 'queue the log for scan' do
-          expect { service.call }.to change(ScanTrackerEntry, :count).by(Settings.queue_limit)
-          expect(ProcessLogsJob).to have_received(:perform_later)
-        end
-      end
-    end
-
-    context 'when there are no ready for scan logs' do
-      let!(:log) { create :log }
+    context 'when there are no logs ready for scan' do
+      let!(:log) { create :log, scan_status: :done }
+      let!(:from) { nil }
+      let!(:to) { nil }
+      let!(:force) { false }
 
       before { allow(ProcessLogsJob).to receive(:perform_later).and_call_original }
 
@@ -42,7 +24,37 @@ RSpec.describe ManuallyEnqueueProcessingLogsService, type: :service do
         expect(ProcessLogsJob).not_to have_received(:perform_later)
 
         log.reload
-        expect(log.scan_status).to be_nil
+        expect(log.scan_status).to eq('done')
+      end
+    end
+
+    context 'when there are ready for scan logs' do
+      let!(:log) { create :log, scan_status: :ready_for_scan }
+      let!(:from) { nil }
+      let!(:to) { nil }
+      let!(:force) { false }
+
+      it 'queue the log for scan' do
+        expect { service.call }.to change(ScanTrackerEntry, :count).by(1)
+
+        log.reload
+        expect(log.scan_status).to eq('queued')
+      end
+    end
+
+    context 'when an error occurs' do
+      let!(:log) { create :log, scan_status: :ready_for_scan }
+      let!(:from) { nil }
+      let!(:to) { nil }
+      let!(:force) { false }
+
+      before { allow(ProcessLogsJob).to receive(:set).and_raise("error") }
+
+      it 'does not continue execution' do
+        expect { service.call }.not_to change(ScanTrackerEntry, :count)
+
+        log.reload
+        expect(log.scan_status).to eq('ready_for_scan')
       end
     end
   end

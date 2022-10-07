@@ -45,11 +45,11 @@ class ProcessLogsService < BaseLogsService
   def process_log(log)
     Rails.logger.info("Processing log with id=[#{log.id}]")
 
-    remote_log = Travis::RemoteLog.new(remote_log_params(log))
+    remote_log = Travis::RemoteLog.new(log.job_id, log.archive_verified, log.archive_verified)
     write_log_to_file(
-      remote_log.id,
-      remote_log.job_id,
-      remote_log.archived? ? remote_log.archived_log_content : remote_log.content
+      log.id,
+      log.job_id,
+      remote_log.archived? ? remote_log.archived_log_content : log.content
     )
   rescue => e
     handle_process_log_error(log)
@@ -67,23 +67,6 @@ class ProcessLogsService < BaseLogsService
 
       ScanTrackerEntry.create_entries([log.id], :error)
     end
-  end
-
-  def remote_log_params(log)
-    {
-      id: log.id,
-      job_id: log.job_id,
-      aggregated_at: log.aggregated_at,
-      archive_verified: log.archive_verified,
-      archiving: log.archiving,
-      archived_at: log.archived_at,
-      purged_at: log.purged_at,
-      removed_by_id: log.removed_by,
-      removed_at: log.removed_at,
-      content: log.content,
-      created_at: log.created_at,
-      updated_at: log.updated_at
-    }
   end
 
   def write_log_to_file(id, job_id, content)
