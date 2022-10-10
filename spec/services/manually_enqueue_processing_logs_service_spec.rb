@@ -3,19 +3,15 @@ require 'rails_helper'
 RSpec.describe ManuallyEnqueueProcessingLogsService, type: :service do
   subject(:service) { described_class.new(params) }
 
-  let(:params) {{
-    :log_ids => [log.id],
-    :from => from,
-    :to => to,
-    :force => force
-  }}
+  let(:params) do
+    {
+      log_ids: [log.id]
+    }
+  end
 
   describe '#call' do
     context 'when there are no logs ready for scan' do
       let!(:log) { create :log, scan_status: :done }
-      let!(:from) { nil }
-      let!(:to) { nil }
-      let!(:force) { false }
 
       before { allow(ProcessLogsJob).to receive(:perform_later).and_call_original }
 
@@ -30,9 +26,6 @@ RSpec.describe ManuallyEnqueueProcessingLogsService, type: :service do
 
     context 'when there are ready for scan logs' do
       let!(:log) { create :log, scan_status: :ready_for_scan }
-      let!(:from) { nil }
-      let!(:to) { nil }
-      let!(:force) { false }
 
       it 'queue the log for scan' do
         expect { service.call }.to change(ScanTrackerEntry, :count).by(1)
@@ -44,11 +37,8 @@ RSpec.describe ManuallyEnqueueProcessingLogsService, type: :service do
 
     context 'when an error occurs' do
       let!(:log) { create :log, scan_status: :ready_for_scan }
-      let!(:from) { nil }
-      let!(:to) { nil }
-      let!(:force) { false }
 
-      before { allow(ProcessLogsJob).to receive(:set).and_raise("error") }
+      before { allow(ProcessLogsJob).to receive(:set).and_raise('error') }
 
       it 'does not continue execution' do
         expect { service.call }.not_to change(ScanTrackerEntry, :count)

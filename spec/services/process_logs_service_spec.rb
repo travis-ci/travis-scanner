@@ -34,12 +34,14 @@ RSpec.describe ProcessLogsService, type: :service do
     context 'when process log error occurs' do
       let!(:log) { create :log, id: 1, scan_status: :queued, content: 'content' }
 
-      before { allow_any_instance_of(Travis::RemoteLog).to receive(:archived?).and_raise("error") }
-      before { allow(File).to receive(:write).and_call_original }
+      before do
+        allow(Travis::RemoteLog).to receive(:new).and_raise('error')
+        allow(File).to receive(:write).and_call_original
+      end
 
       it 'creates a new error entry' do
         expect { service.call }.to change(ScanTrackerEntry, :count).by(2)
-        expect(File).to_not have_received(:write)
+        expect(File).not_to have_received(:write)
 
         log.reload
         expect(log.scan_status).to eq('error')
@@ -49,12 +51,14 @@ RSpec.describe ProcessLogsService, type: :service do
     context 'when an error occurs' do
       let!(:log) { create :log, scan_status: :queued }
 
-      before { allow(Log).to receive(:where).and_raise("error") }
-      before { allow(File).to receive(:write).and_call_original }
+      before do
+        allow(Log).to receive(:where).and_raise('error')
+        allow(File).to receive(:write).and_call_original
+      end
 
       it 'does not continue execution' do
         expect { service.call }.not_to change(ScanTrackerEntry, :count)
-        expect(File).to_not have_received(:write)
+        expect(File).not_to have_received(:write)
 
         log.reload
         expect(log.scan_status).to eq('queued')
