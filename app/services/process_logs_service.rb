@@ -45,7 +45,7 @@ class ProcessLogsService < BaseLogsService
   def process_log(log)
     Rails.logger.info("Processing log with id=[#{log.id}]")
 
-    remote_log = Travis::RemoteLog.new(log.job_id, log.archive_verified, log.archive_verified)
+    remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified)
     write_log_to_file(
       log.id,
       log.job_id,
