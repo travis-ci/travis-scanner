@@ -34,14 +34,14 @@ class ProcessLogsService < BaseLogsService
 
   def process_logs(logs)
     logs.each(&method(:download_log))
-    
+
     run_scanner(logs)
   end
 
   def download_log(log)
     Rails.logger.info("Processing log with id=[#{log.id}]")
 
-    remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified)
+    remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
     write_log_to_file(
       log.id,
       remote_log.archived? ? remote_log.archived_log_content : log.content
@@ -73,11 +73,11 @@ class ProcessLogsService < BaseLogsService
   def write_log_to_file(id, content)
     File.write(File.join(build_job_logs_dir, "#{id}.log"), content) if content.present?
   end
-  
+
   def build_job_logs_dir
     @build_job_logs_dir ||= File.join("tmp/build_job_logs/#{Time.now.to_i}")
   end
-  
+
   def run_scanner(logs)
     log_ids = logs.map(&:id)
     if Dir.entries(build_job_logs_dir).count == 2 # . and ..
@@ -86,34 +86,37 @@ class ProcessLogsService < BaseLogsService
 
       return
     end
-    
+
     plugins_result = Travis::Scanner::Runner.new.run(build_job_logs_dir)
-    
+    grouped_logs = logs.each_with_object({}) do |log, memo|
+      memo[log.id] = log
+    end
+
     affected_log_ids = plugins_result.keys.map(&method(:log_id_from_filename))
     unaffected_log_ids = log_ids - affected_log_ids
     if unaffected_log_ids.present?
       ApplicationRecord.transaction do
         update_logs_status(unaffected_log_ids, :finalizing)
         unaffected_log_ids.each do |log_id|
-          ScanResult.create(scan_result_entries) do |entry|
-            entry.content = {}
-            entry.job_id = grouped_logs[log_id].job_id
-            entry.owner_id = 1 # TODO: STUB
-            entry.owner_type = 'Repository' # TODO: STUB
-            entry.issues_found = 0
-            entry.archived = false
-            entry.token = 'STUB' # TODO: STUB
-          end
+          log = grouped_logs[log_id]
+          remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
+          ScanResult.create(
+            log_id: log_id,
+            content: {},
+            job_id: log.job_id,
+            owner_id: log.job&.owner_id,
+            owner_type: log.job&.owner_type,
+            issues_found: 0,
+            archived: remote_log.archived?,
+            token: 'STUB' # STANTODO: STUB
+          )
         end
         update_logs_status(unaffected_log_ids, :done)
       end
-
-      return
     end
 
-    grouped_logs = logs.each_with_object({}) do |log, memo|
-      memo[log.id] = log
-    end
+    return if affected_log_ids.blank?
+
     CensorLogsService.new(affected_log_ids, grouped_logs, build_job_logs_dir, plugins_result).call if affected_log_ids.present?
   rescue => e
     Rails.logger.error("An error happened during the plugins execution: #{e.message}\n#{e.backtrace.join("\n")}")
@@ -124,7 +127,7 @@ class ProcessLogsService < BaseLogsService
 
     update_logs_status(log_ids, :error)
   end
-  
+
   def log_id_from_filename(filename)
     filename.sub('.log', '').to_i
   end

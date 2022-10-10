@@ -90,3 +90,35 @@ staging:
 production:
   <<: *default
   database: <%= ENV.fetch('DB_NAME', 'travis_logs_production') %>
+
+# Travis DB
+travis_default: &travis_default
+  <<: *default
+  host: <%= ENV['TRAVIS_DB_HOST'] %>
+  database: <%= ENV['TRAVIS_DB_NAME'] %>
+  username: <%= ENV['TRAVIS_DB_USERNAME'] %>
+  password: <%= ENV['TRAVIS_DB_PASSWORD'] %>
+
+travis_local_default: &travis_local_default
+  <<: *travis_default
+  host: <%= ENV['TRAVIS_DB_HOST'] || 'postgres' %>
+  database: <%= ENV['TRAVIS_DB_NAME'] || 'travis_development' %>
+  username: <%= ENV['TRAVIS_DB_USER'] || 'postgres' %>
+  password: <%= ENV['TRAVIS_DB_PASSWORD'] || 'postgres' %>
+
+travis_development:
+  <<: *travis_local_default
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+travis_test:
+  <<: *travis_local_default
+  database: travis_test
+
+travis_staging:
+  <<: *travis_default
+
+travis_production:
+  <<: *travis_default
+

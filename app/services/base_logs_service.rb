@@ -8,7 +8,7 @@ class BaseLogsService < ApplicationService
       retries: 0
     }
   end
-  
+
   def update_logs_status(log_ids, status)
     scan_status = Log.scan_statuses[status]
     ApplicationRecord.transaction do

@@ -15,7 +15,7 @@ class CensorLogsService < BaseLogsService
 
     @log_ids.each do |log_id|
       filename = "#{log_id}.log"
-      contents = File.read(File.join(@logs_dir, filename)).split("\n")
+      contents = File.read(File.join(@logs_dir, filename)).split($/)
       findings = @plugins_result[filename]
       # Shouldn't happen, because we're passing only the affected logs
       next if findings.blank?
@@ -32,46 +32,39 @@ class CensorLogsService < BaseLogsService
         end
       end
 
-      File.open(File.join(@logs_dir, "#{log_id}_censored.log"), 'w') do |f|
-        f.write(contents.join("\n"))
-      end
+      update_logs_status([log_id], :finalizing)
+      log = @grouped_logs[log_id]
+      remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
+      ScanResult.create(
+        log_id: log_id,
+        job_id: log.job_id,
+        owner_id: log.job&.owner_id,
+        owner_type: log.job&.owner_type,
+        content: findings,
+        issues_found: findings.values.flatten.count,
+        archived: remote_log.archived?,
+        token: 'STUB' # STANTODO: STUB
+      )
 
-      update_logs_status(@log_ids, :finalizing)
-      ApplicationRecord.transaction do
-        @log_ids.each do |log_id|
-          ScanResult.create(log_id: log_id) do |entry|
-            entry.job_id = @grouped_logs[log_id].job_id
-            entry.owner_id = 1 # TODO: STUB
-            entry.owner_type = 'Repository' # TODO: STUB
-            entry.content = @plugins_result["#{log_id}.log"]
-            entry.issues_found = entry.content.values.flatten.count
-            entry.archived = false
-            entry.token = 'STUB' # TODO: STUB
-          end
+      begin
+        remote_log.store_scan_report(
+          log_id,
+          File.read(File.join(@logs_dir, filename)),
+          findings
+        )
+        censored_content = contents.join($/)
+        remote_log.update_content(censored_content)
+        ApplicationRecord.transaction do
+          log.job&.repository&.update(scan_failed_at: Time.now)
+          log.update(content: censored_content)
+          update_logs_status([log_id], :done)
+          log.update(censored: true)
         end
-      end
+      rescue Aws::S3::Errors::Error => e
+        Rails.logger.error("An error happened while uploading scan results log_id=#{log_id}: #{e.message}")
+        Sentry.capture_exception(e)
 
-      # TODO: Upload original file backup and scan result to S3
-      # TODO: Update the log in DB/S3
-
-      ApplicationRecord.transaction do
-        update_logs_status(@log_ids, :done)
-        Log.where(id: log_id).update_all(censored: true)
-      end
-    end
-  end
-
-  private
-
-  def update_logs_status(log_ids, status)
-    return if log_ids.empty?
-
-    scan_status = Log.scan_statuses[status]
-    scan_tracker_entries = log_ids.map { |id| { log_id: id } }
-    ApplicationRecord.transaction do
-      Log.where(id: log_ids).update_all(scan_status: scan_status, scan_status_updated_at: Time.now)
-      ScanTrackerEntry.create(scan_tracker_entries) do |entry|
-        entry.scan_status = scan_status
+        update_logs_status([log_id], :error)
       end
     end
   end
