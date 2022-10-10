@@ -29,7 +29,7 @@ module Travis
 
     def archive_bucket
       @archive_bucket ||= [
-        ENV['ENVIRONMENT'] == 'staging' ? 'archive-staging' : 'archive',
+        Rails.env.staging? ? 'archive-staging' : 'archive',
         ENV['HOST'].split('.')[-2, 2]
       ].flatten.compact.join('.')
     end

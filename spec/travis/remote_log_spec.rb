@@ -17,7 +17,7 @@ RSpec.describe Travis::RemoteLog do
         allow(body).to receive(:string).and_return('content')
         allow(response).to receive(:body) { body }
         allow(Aws::S3::Client).to receive(:new) { client }
-        allow(ENV).to receive(:[]).with('ENVIRONMENT').and_return('staging')
+        allow(Rails.env).to receive(:staging?).and_return('staging')
         allow(ENV).to receive(:[]).with('HOST').and_return('travis-ci.org')
         allow(client).to receive(:get_object) { response }
       end
