@@ -48,5 +48,3 @@ vendor/bundle
 # System Files
 .DS_Store
 Thumbs.db
-
-/build_job_logs
