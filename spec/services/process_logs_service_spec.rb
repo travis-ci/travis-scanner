@@ -7,7 +7,7 @@ RSpec.describe ProcessLogsService, type: :service do
 
   describe '#call' do
     context 'when there are queued logs' do
-      let!(:log) { create :log, id: 1, scan_status: :queued, content: 'content' }
+      let!(:log) { create :log, scan_status: :queued, content: 'content' }
 
       before { allow(File).to receive(:write).once }
 
@@ -32,7 +32,7 @@ RSpec.describe ProcessLogsService, type: :service do
     end
 
     context 'when process log error occurs' do
-      let!(:log) { create :log, id: 1, scan_status: :queued, content: 'content' }
+      let!(:log) { create :log, scan_status: :queued, content: 'content' }
 
       before do
         allow(Travis::RemoteLog).to receive(:new).and_raise('error')

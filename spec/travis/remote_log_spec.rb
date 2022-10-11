@@ -3,15 +3,15 @@ require 'rails_helper'
 RSpec.describe Travis::RemoteLog do
   subject(:remote_log) { described_class.new(:job_id, :archived_at, :archive_verified) }
 
-  let(:job_id) { 1 }
+  let(:job_id) { Faker::Number.number(digits: 4) }
   let(:archived_at) { Time.now.utc }
   let(:archive_verified) { true }
 
   describe '#archived_log_content' do
     context 'when fetch content from s3' do
-      let!(:client) { double }
-      let!(:response) { double }
-      let!(:body) { double }
+      let(:client) { double }
+      let(:response) { double }
+      let(:body) { double }
 
       before do
         allow(body).to receive(:string).and_return('content')
