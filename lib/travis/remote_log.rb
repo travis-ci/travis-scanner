@@ -24,7 +24,7 @@ module Travis
         ["#{log_id}_scan_report.txt", JSON.dump(report_data)]
       ].each do |item|
         s3_client.put_object(
-          bucket: scan_report_bucket,
+          bucket: Settings.scan_reports_bucket,
           key: item.first,
           body: item.last
         )
@@ -48,18 +48,14 @@ module Travis
     end
 
     def archive_bucket
-      @archive_bucket ||= bucket_name('archive')
-    end
-
-    def scan_report_bucket
-      @scan_report_bucket ||= bucket_name('scan_report')
+      @archive_bucket ||= [
+        Rails.env.staging? ? 'archive-staging' : archive,
+        ENV["HOST"].split('.')[-2, 2]
+      ].flatten.compact.join('.')
     end
 
     def bucket_name(basename)
-      [
-        Rails.env.staging? ? "#{basename}-staging" : basename,
-        ENV["HOST"].split('.')[-2, 2]
-      ].flatten.compact.join('.')
+      
     end
 
     def file_options

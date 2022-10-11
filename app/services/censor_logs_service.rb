@@ -56,9 +56,8 @@ class CensorLogsService < BaseLogsService
         remote_log.update_content(censored_content)
         ApplicationRecord.transaction do
           log.job&.repository&.update(scan_failed_at: Time.now)
-          log.update(content: censored_content)
+          log.update(content: censored_content, censored: true)
           update_logs_status([log_id], :done)
-          log.update(censored: true)
         end
       rescue Aws::S3::Errors::Error => e
         Rails.logger.error("An error happened while uploading scan results log_id=#{log_id}: #{e.message}")
