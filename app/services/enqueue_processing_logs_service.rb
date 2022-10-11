@@ -19,7 +19,7 @@ class EnqueueProcessingLogsService < BaseLogsService
 
     log_ids = logs.pluck(:id).reverse
     return if log_ids.blank?
-    
+
     update_logs_status(log_ids, :queued)
     ProcessLogsJob.perform_later(log_ids)
   end

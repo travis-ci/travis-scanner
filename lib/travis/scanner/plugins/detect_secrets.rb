@@ -21,9 +21,18 @@ module Travis
           @json_data << line
         end
 
-        def get_scan_results
+        def scan_results
+          process_results(JSON.parse(@json_data)['results'])
+        rescue JSON::ParserError => e
+          Sentry.capture_exception(e)
+          Rails.logger.error(e.message)
+
+          []
+        end
+
+        def process_results(input)
           results = []
-          JSON.parse(@json_data)['results'].each do |filename, json_results|
+          input.each do |filename, json_results|
             json_results.each do |result|
               results << {
                 log_id: filename,
@@ -32,7 +41,7 @@ module Travis
                     name: result['type'],
                     line: result['line_number'],
                     column: -1,
-                    size: -1,
+                    size: -1
                   }
                 ]
               }
@@ -40,11 +49,6 @@ module Travis
           end
 
           results
-        rescue JSON::ParserError => e
-          Sentry.capture_exception(e)
-          Rails.logger.error(e.message)
-
-          []
         end
       end
     end

@@ -21,32 +21,15 @@ module Travis
           @json_data << line
         end
 
-        def get_scan_results
+        def scan_results
           scan_result = JSON.parse(@json_data)
-          return [] unless scan_result.has_key?('Results')
+          return [] unless scan_result.key?('Results')
 
           results = []
           scan_result['Results'].each do |result|
             next unless result['Class'] == 'secret' || result['Secrets'].empty?
 
-            finding = {
-              log_id: result['Target'],
-              scan_findings: []
-            }
-            result['Secrets'].each do |secret|
-              match_data = secret['Match'].to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
-
-              match_data.each do |match|
-                finding[:scan_findings] << {
-                  name: secret['Title'],
-                  line: secret['StartLine'],
-                  column: match.first,
-                  size: match.last,
-                }
-              end
-            end
-
-            results << finding
+            results << process_result(result)
           end
 
           results
@@ -55,6 +38,29 @@ module Travis
           Rails.logger.error(e.message)
 
           []
+        end
+
+        def process_result(result)
+          finding = {
+            log_id: result['Target'],
+            scan_findings: []
+          }
+          result['Secrets'].each do |secret|
+            match_data = secret['Match'].to_enum(:scan, /\*+/).map do
+              [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
+            end
+
+            match_data.each do |match|
+              finding[:scan_findings] << {
+                name: secret['Title'],
+                line: secret['StartLine'],
+                column: match.first,
+                size: match.last
+              }
+            end
+          end
+
+          finding
         end
       end
     end

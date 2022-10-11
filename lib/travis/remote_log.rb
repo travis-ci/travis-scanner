@@ -50,13 +50,11 @@ module Travis
     def archive_bucket
       @archive_bucket ||= [
         Rails.env.staging? ? 'archive-staging' : archive,
-        ENV["HOST"].split('.')[-2, 2]
+        ENV['HOST'].split('.')[-2, 2]
       ].flatten.compact.join('.')
     end
 
-    def bucket_name(basename)
-      
-    end
+    def bucket_name(basename); end
 
     def file_options
       @file_options ||= {

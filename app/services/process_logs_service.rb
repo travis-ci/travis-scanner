@@ -1,6 +1,6 @@
 require 'fileutils'
 
-class ProcessLogsService < BaseLogsService
+class ProcessLogsService < BaseLogsService # rubocop:disable Metrics/ClassLength
   def initialize(log_ids)
     super()
 
@@ -21,7 +21,6 @@ class ProcessLogsService < BaseLogsService
 
   def process_log_entries
     logs = Log.queued.where(id: @log_ids).to_a
-
     log_ids = logs.map(&:id)
     return if log_ids.blank?
 
@@ -33,7 +32,7 @@ class ProcessLogsService < BaseLogsService
   end
 
   def process_logs(logs)
-    logs.each(&method(:download_log))
+    logs.each { |log| download_log(log) }
 
     run_scanner(logs)
   end
@@ -87,38 +86,45 @@ class ProcessLogsService < BaseLogsService
       return
     end
 
-    plugins_result = Travis::Scanner::Runner.new.run(build_job_logs_dir)
-    grouped_logs = logs.each_with_object({}) do |log, memo|
-      memo[log.id] = log
-    end
+    process_plugins_result(log_ids, logs, Travis::Scanner::Runner.new.run(build_job_logs_dir))
+  rescue => e
+    handle_errors(e, log_ids)
+  end
 
-    affected_log_ids = plugins_result.keys.map(&method(:log_id_from_filename))
+  def process_plugins_result(log_ids, logs, plugins_result)
+    grouped_logs = logs.index_by(&:id)
+
+    affected_log_ids = plugins_result.keys.map { |filename| filename.sub('.log', '').to_i }
     unaffected_log_ids = log_ids - affected_log_ids
-    if unaffected_log_ids.present?
-      ApplicationRecord.transaction do
-        update_logs_status(unaffected_log_ids, :finalizing)
-        unaffected_log_ids.each do |log_id|
-          log = grouped_logs[log_id]
-          remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
-          ScanResult.create(
-            log_id: log_id,
-            content: {},
-            job_id: log.job_id,
-            owner_id: log.job&.owner_id,
-            owner_type: log.job&.owner_type,
-            issues_found: 0,
-            archived: remote_log.archived?,
-            token: 'STUB' # STANTODO: STUB
-          )
-        end
-        update_logs_status(unaffected_log_ids, :done)
-      end
-    end
-
+    process_unaffected_logs(unaffected_log_ids, grouped_logs) if unaffected_log_ids.present?
     return if affected_log_ids.blank?
 
-    CensorLogsService.new(affected_log_ids, grouped_logs, build_job_logs_dir, plugins_result).call if affected_log_ids.present?
-  rescue => e
+    CensorLogsService.new(affected_log_ids, grouped_logs, build_job_logs_dir,
+                          plugins_result).call
+  end
+
+  def process_unaffected_logs(unaffected_log_ids, grouped_logs)
+    ApplicationRecord.transaction do
+      update_logs_status(unaffected_log_ids, :finalizing)
+      unaffected_log_ids.each do |log_id|
+        log = grouped_logs[log_id]
+        remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
+        ScanResult.create(
+          log_id: log_id,
+          content: {},
+          job_id: log.job_id,
+          owner_id: log.job&.owner_id,
+          owner_type: log.job&.owner_type,
+          issues_found: 0,
+          archived: remote_log.archived?,
+          token: 'STUB' # STANTODO: STUB
+        )
+      end
+      update_logs_status(unaffected_log_ids, :done)
+    end
+  end
+
+  def handle_errors(e, log_ids)
     Rails.logger.error("An error happened during the plugins execution: #{e.message}\n#{e.backtrace.join("\n")}")
     Sentry.with_scope do |scope|
       scope.set_tags(log_ids: log_ids.join(','))
@@ -126,9 +132,5 @@ class ProcessLogsService < BaseLogsService
     end
 
     update_logs_status(log_ids, :error)
-  end
-
-  def log_id_from_filename(filename)
-    filename.sub('.log', '').to_i
   end
 end
