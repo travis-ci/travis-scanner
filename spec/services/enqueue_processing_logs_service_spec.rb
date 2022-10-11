@@ -5,29 +5,25 @@ RSpec.describe EnqueueProcessingLogsService, type: :service do
 
   describe '#call' do
     context 'when there are ready for scan logs' do
-      let!(:log) { create :log, scan_status: :ready_for_scan }
+      let!(:log) { create :log, scan_status: Log.scan_statuses[:ready_for_scan] }
 
-      before { allow(ProcessLogsJob).to receive(:perform_later).with([log.id]).once }
-
-      it 'queue the log for scan' do
+      it 'enqueues the log for scan' do
+        expect(ProcessLogsJob).to receive(:perform_later).with([log.id])
         expect { service.call }.to change(ScanTrackerEntry, :count).by(1)
-        expect(ProcessLogsJob).to have_received(:perform_later)
-
-        log.reload
-        expect(log.scan_status).to eq('queued')
+        expect(log.reload.scan_status).to eq(Log.scan_statuses[:queued])
       end
     end
 
-    context 'batch queueing' do
+    describe 'batch queueing' do
       context 'when there are ready for scan logs' do
-        let!(:logs) { create_list(:log, Settings.queue_limit + 1, scan_status: :ready_for_scan) }
+        let!(:logs) { create_list(:log, Settings.queue_limit + 1, scan_status: Log.scan_statuses[:ready_for_scan]) }
         let(:log_ids) { logs.map(&:id).sort.reverse.first(Settings.queue_limit).reverse }
 
-        before { allow(ProcessLogsJob).to receive(:perform_later).with(log_ids).once }
-
-        it 'queue the log for scan' do
+        it 'enqueues the logs for scan' do
+          expect(ProcessLogsJob).to receive(:perform_later).with(log_ids)
           expect { service.call }.to change(ScanTrackerEntry, :count).by(Settings.queue_limit)
-          expect(ProcessLogsJob).to have_received(:perform_later)
+
+          expect(Log.where(id: log_ids).pluck('DISTINCT(scan_status)')).to eq([Log.scan_statuses[:queued]])
         end
       end
     end
@@ -35,14 +31,23 @@ RSpec.describe EnqueueProcessingLogsService, type: :service do
     context 'when there are no ready for scan logs' do
       let!(:log) { create :log }
 
-      before { allow(ProcessLogsJob).to receive(:perform_later).and_call_original }
-
       it 'does not queue the log for scan' do
+        expect(ProcessLogsJob).not_to receive(:perform_later)
         expect { service.call }.not_to change(ScanTrackerEntry, :count)
-        expect(ProcessLogsJob).not_to have_received(:perform_later)
+        expect(log.reload.scan_status).to be_nil
+      end
+    end
 
-        log.reload
-        expect(log.scan_status).to be_nil
+    context 'when an error is raised' do
+      let!(:log) { create :log, scan_status: Log.scan_statuses[:ready_for_scan] }
+      let(:error) { RuntimeError.new('Test') }
+
+      it 'reports an error' do
+        expect(ProcessLogsJob).not_to receive(:perform_later).with([log.id])
+        expect(Travis::Lock).to receive(:exclusive).and_raise(error)
+        service.call
+
+        expect(log.reload.scan_status).to eq(Log.scan_statuses[:ready_for_scan])
       end
     end
   end

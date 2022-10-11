@@ -22,8 +22,11 @@ module Travis
         end
 
         def get_scan_results
+          scan_result = JSON.parse(@json_data)
+          return [] unless scan_result.has_key?('Results')
+
           results = []
-          JSON.parse(@json_data)['Results'].each do |result|
+          scan_result['Results'].each do |result|
             next unless result['Class'] == 'secret' || result['Secrets'].empty?
 
             finding = {
