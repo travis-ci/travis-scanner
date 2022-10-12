@@ -70,5 +70,43 @@ RSpec.describe ProcessLogsService, type: :service do
         expect(log.reload.scan_status).to eq(Log.scan_statuses[:queued])
       end
     end
+
+    context 'when an error occurs during censoring' do
+      let!(:log) { create :log, scan_status: Log.scan_statuses[:queued], content: "content AKIAIOSFODNN7EXAMPLE\nTest" }
+      let(:censor_service) { double }
+
+      before do
+        allow(CensorLogsService).to receive(:new).and_return(censor_service)
+        allow(censor_service).to receive(:call).and_raise('error')
+      end
+
+      it 'does not continue execution' do
+        expect { service.call }.to change(ScanTrackerEntry, :count).by(2)
+
+        expect(log.reload.scan_status).to eq(Log.scan_statuses[:error])
+      end
+    end
+
+    context 'when there are unaffected logs' do
+      let!(:log) { create :log, scan_status: Log.scan_statuses[:queued], content: "content\nTest" }
+      let(:remote_log) { Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?) }
+
+      before do
+        stub_const('ENV', ENV.to_hash.merge('HOST' => 'travis-ci.org'))
+        allow(Travis::RemoteLog).to receive(:new).and_return(remote_log)
+        allow(remote_log).to receive(:store_scan_report)
+        allow(remote_log).to receive(:update_content)
+        allow(File).to receive(:write).and_call_original
+      end
+
+      it 'performs the scan' do
+        expect { service.call }.to change(ScanTrackerEntry, :count).by(3) # Started, finalizing, and done
+
+        expect(File).to have_received(:write)
+        expect(remote_log).not_to have_received(:store_scan_report)
+        expect(remote_log).not_to have_received(:update_content)
+        expect(log.reload.scan_status).to eq(Log.scan_statuses[:done])
+      end
+    end
   end
 end

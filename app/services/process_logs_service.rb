@@ -1,6 +1,6 @@
 require 'fileutils'
 
-class ProcessLogsService < BaseLogsService # rubocop:disable Metrics/ClassLength
+class ProcessLogsService < BaseLogsService
   def initialize(log_ids)
     super()
 
@@ -50,23 +50,6 @@ class ProcessLogsService < BaseLogsService # rubocop:disable Metrics/ClassLength
 
     Rails.logger.error(e.message)
     Sentry.capture_exception(e)
-  end
-
-  def remote_log_params(log)
-    {
-      id: log.id,
-      job_id: log.job_id,
-      aggregated_at: log.aggregated_at,
-      archive_verified: log.archive_verified,
-      archiving: log.archiving,
-      archived_at: log.archived_at,
-      purged_at: log.purged_at,
-      removed_by_id: log.removed_by,
-      removed_at: log.removed_at,
-      content: log.content,
-      created_at: log.created_at,
-      updated_at: log.updated_at
-    }
   end
 
   def write_log_to_file(id, content)
