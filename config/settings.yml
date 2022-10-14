@@ -12,4 +12,4 @@ plugins:
   detect_secrets:
     enabled: <%= ENV.fetch('TRAVIS_SCANNER_DETECT_SECRETS_ENABLED', true) %>
     cmdline: <%= ENV.fetch('TRAVIS_SCANNER_DETECT_SECRETS_CMDLINE', 'detect-secrets') %>
-scan_reports_bucket: <%= ENV.fetch('TRAVIS_SCANNER_SCAN_REPORTS_BUCKET', 'scan-reports') %>
+original_logs_bucket: <%= ENV.fetch('TRAVIS_SCANNER_ORIGINAL_LOGS_BUCKET', 'archive-raw') %>

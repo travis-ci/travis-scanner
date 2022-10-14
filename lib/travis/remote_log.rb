@@ -19,16 +19,17 @@ module Travis
     end
 
     def store_scan_report(log_id, original_content, report_data)
-      [
-        ["#{log_id}.txt", original_content],
-        ["#{log_id}_scan_report.txt", JSON.dump(report_data)]
-      ].each do |item|
-        s3_client.put_object(
-          bucket: Settings.scan_reports_bucket,
-          key: item.first,
-          body: item.last
-        )
-      end
+      s3_client.put_object(
+        bucket: Settings.original_logs_bucket,
+        key: "#{log_id}.txt",
+        body: original_content
+      )
+
+      s3_client.put_object(
+        bucket: archive_bucket,
+        key: "scan_reports/#{log_id}.txt",
+        body: JSON.dump(report_data)
+      )
     end
 
     private
@@ -53,8 +54,6 @@ module Travis
         ENV['HOST'].split('.')[-2, 2]
       ].flatten.compact.join('.')
     end
-
-    def bucket_name(basename); end
 
     def file_options
       @file_options ||= {
