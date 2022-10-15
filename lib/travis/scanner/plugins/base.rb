@@ -12,6 +12,7 @@ module Travis
         end
 
         def start(logs_path)
+          @current_run_logs_path = logs_path
           @waiter_thread = Thread.new do
             Timeout.timeout(Settings.plugin_execution_timeout) do
               execute_plugin(logs_path)
