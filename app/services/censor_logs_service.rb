@@ -24,9 +24,16 @@ class CensorLogsService < BaseLogsService
     # Shouldn't happen, because we're passing only the affected logs
     return if findings.blank?
 
-    contents = File.read(File.join(@logs_dir, filename))
-    censored_content = process_findings(contents.split($INPUT_RECORD_SEPARATOR), findings)
-                       .join($INPUT_RECORD_SEPARATOR)
+    endline_character = "\r\n"
+    content = File.read(File.join(@logs_dir, filename))
+    if !content.include? endline_character
+      endline_character = "\n"
+    end
+
+    content_lines = content.split(endline_character)
+    censored_content_lines = process_findings(content_lines, findings)
+    censored_content = censored_content_lines.join(endline_character)
+
     process_result(log_id, findings, contents, censored_content)
   end
 
@@ -45,26 +52,53 @@ class CensorLogsService < BaseLogsService
       archived: remote_log.archived?,
       token: 'STUB' # STANTODO: STUB
     )
-
+    
     store_scan_report(contents, remote_log, log, findings, censored_content)
   end
 
   def process_findings(contents, findings)
-    findings.each do |line_number, line_findings|
+    findings.each do |start_line, line_findings|
       applied_line_findings = []
-
+      start_line_to_censor = start_line
+      start_column_to_censor = nil
+      end_line_to_censor = start_line
+      end_column_to_censor = nil
       line_findings.each do |line_finding|
         line_finding = line_finding.with_indifferent_access
-        line_finding_column = line_finding[:column]
-        next if line_finding_column.negative? || applied_line_findings.include?(line_finding_column)
 
-        applied_line_findings << line_finding_column
-        start_index = line_finding_column - 1
-        end_index = start_index + line_finding[:size] - 1
-        contents[line_number.to_i - 1][start_index..end_index] = '*' * line_finding[:size]
+        if line_finding.key?(:start_column) && line_finding[:start_column] > 0
+          start_column_to_censor = line_finding[:start_column] unless start_column_to_censor != nil && line_finding[:start_column] > start_column_to_censor
+        else
+          start_column_to_censor = 1
+        end
+
+        current_end_line = line_finding.key?(:end_line) ? line_finding[:end_line] : start_line_to_censor
+        end_line_to_censor = current_end_line unless current_end_line < end_line_to_censor
+
+        current_end_column = line_finding.key?(:end_column) ? line_finding[:end_column] : (contents[end_line_to_censor.to_i - 1].length + 1)
+        end_column_to_censor = current_end_column unless end_column_to_censor != nil && current_end_column < end_column_to_censor
+      end
+      (start_line_to_censor-1..end_line_to_censor-1).each do |n|
+        line_length = contents[n].length
+        if start_line_to_censor - 1 == n && n == end_line_to_censor -1
+          before = start_column_to_censor - 2 > 0 ? contents[n][..start_column_to_censor-2] : ''
+          censored = '*' * contents[n][start_column_to_censor-1..end_column_to_censor-2].length
+          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor-1..] : ''
+          contents[n] = before + censored + after
+        elsif start_line_to_censor - 1 == n
+          before = start_column_to_censor - 2 > 0 ? contents[n][..start_column_to_censor-2] : ''
+          censored = '*' * contents[n][start_column_to_censor-1..].length
+          contents[n] = before + censored
+        elsif end_line_to_censor - 1 == n
+          censored_part_length = contents[n][..end_column_to_censor-2].length
+          censored = '*' * (censored_part_length < line_length ? censored_part_length : line_length)
+          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor-1..] : ''
+          contents[n] = censored + after
+        else
+          contents[n] = '*' * line_length
+        end
       end
     end
-
     contents
   end
 

@@ -37,9 +37,7 @@ module Travis
                 scan_findings: [
                   {
                     name: result['type'],
-                    line: result['line_number'],
-                    column: -1,
-                    size: -1
+                    start_line: result['line_number']
                   }
                 ]
               }
