@@ -20,7 +20,7 @@ module Travis
 
     def store_scan_report(log_id, original_content, report_data)
       s3_client.put_object(
-        bucket: Settings.original_logs_bucket,
+        bucket: Settings.archive_raw_logs_bucket,
         key: "#{log_id}.txt",
         body: original_content
       )

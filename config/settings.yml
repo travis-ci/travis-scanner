@@ -1,15 +1,20 @@
 redis:
   url: <%= ENV.fetch('REDIS_URL', 'redis://redis:6379/1') %>
-queue_limit: 200
-queue_interval: <%= ENV.fetch('QUEUE_INTERVAL', 1) %>
-plugin_execution_timeout: <%= ENV.fetch('TRAVIS_SCANNER_PLUGIN_EXECUTION_TIMEOUT', 600).to_i %> # seconds
+
 sentry:
   dsn: fill-me
+
+queue_limit: 200
+queue_interval: <%= ENV.fetch('QUEUE_INTERVAL', 1) %>
+
+archive_raw_logs_bucket: <%= ENV.fetch('TRAVIS_SCANNER_ARCHIVE_RAW_LOGS_BUCKET', 'archive-raw') %>
+plugin_execution_timeout: <%= ENV.fetch('TRAVIS_SCANNER_PLUGIN_EXECUTION_TIMEOUT', 600).to_i %> # seconds
+
 plugins:
   trivy:
     enabled: <%= ENV.fetch('TRAVIS_SCANNER_TRIVY_ENABLED', true) %>
     cmdline: <%= ENV.fetch('TRAVIS_SCANNER_TRIVY_CMDLINE', 'trivy') %>
+
   detect_secrets:
     enabled: <%= ENV.fetch('TRAVIS_SCANNER_DETECT_SECRETS_ENABLED', true) %>
     cmdline: <%= ENV.fetch('TRAVIS_SCANNER_DETECT_SECRETS_CMDLINE', 'detect-secrets') %>
-original_logs_bucket: <%= ENV.fetch('TRAVIS_SCANNER_ORIGINAL_LOGS_BUCKET', 'archive-raw') %>

@@ -9,6 +9,7 @@ class ProcessLogsService < BaseLogsService
 
   def call
     Rails.logger.info("Received log_ids: #{@log_ids.inspect}")
+
     Travis::Lock.exclusive('process_logs', lock_options) do
       process_log_entries
     end
@@ -25,6 +26,7 @@ class ProcessLogsService < BaseLogsService
     return if log_ids.blank?
 
     FileUtils.mkdir_p(build_job_logs_dir)
+
     update_logs_status(log_ids, :started)
     process_logs(logs)
   ensure
@@ -82,16 +84,17 @@ class ProcessLogsService < BaseLogsService
     process_unaffected_logs(unaffected_log_ids, grouped_logs) if unaffected_log_ids.present?
     return if affected_log_ids.blank?
 
-    CensorLogsService.new(affected_log_ids, grouped_logs, build_job_logs_dir,
-                          plugins_result).call
+    CensorLogsService.new(affected_log_ids, grouped_logs, build_job_logs_dir, plugins_result).call
   end
 
   def process_unaffected_logs(unaffected_log_ids, grouped_logs)
     ApplicationRecord.transaction do
       update_logs_status(unaffected_log_ids, :finalizing)
+
       unaffected_log_ids.each do |log_id|
         log = grouped_logs[log_id]
         remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
+
         ScanResult.create(
           log_id: log_id,
           content: {},
@@ -103,6 +106,7 @@ class ProcessLogsService < BaseLogsService
           token: 'STUB' # STANTODO: STUB
         )
       end
+
       update_logs_status(unaffected_log_ids, :done)
     end
   end

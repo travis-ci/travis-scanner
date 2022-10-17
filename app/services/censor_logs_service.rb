@@ -1,4 +1,5 @@
 require 'English'
+
 class CensorLogsService < BaseLogsService
   def initialize(log_ids, grouped_logs, logs_dir, plugins_result)
     super()
@@ -19,11 +20,11 @@ class CensorLogsService < BaseLogsService
 
   def process_log_id(log_id)
     filename = "#{log_id}.log"
-    contents = File.read(File.join(@logs_dir, filename))
     findings = @plugins_result[filename]
     # Shouldn't happen, because we're passing only the affected logs
     return if findings.blank?
 
+    contents = File.read(File.join(@logs_dir, filename))
     censored_content = process_findings(contents.split($INPUT_RECORD_SEPARATOR), findings)
                        .join($INPUT_RECORD_SEPARATOR)
     process_result(log_id, findings, contents, censored_content)
@@ -44,12 +45,14 @@ class CensorLogsService < BaseLogsService
       archived: remote_log.archived?,
       token: 'STUB' # STANTODO: STUB
     )
+
     store_scan_report(contents, remote_log, log, findings, censored_content)
   end
 
   def process_findings(contents, findings)
     findings.each do |line_number, line_findings|
       applied_line_findings = []
+
       line_findings.each do |line_finding|
         line_finding = line_finding.with_indifferent_access
         line_finding_column = line_finding[:column]
@@ -68,6 +71,7 @@ class CensorLogsService < BaseLogsService
   def store_scan_report(contents, remote_log, log, findings, censored_content)
     remote_log.store_scan_report(log.id, contents, findings)
     remote_log.update_content(censored_content)
+
     ApplicationRecord.transaction do
       log.job&.repository&.update(scan_failed_at: Time.zone.now)
       log.update(content: censored_content, censored: true)
