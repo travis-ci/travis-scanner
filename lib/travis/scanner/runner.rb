@@ -27,7 +27,7 @@ module Travis
             result[:scan_findings].each do |scan_finding|
               new_finding = {
                 plugin_name: scanner_result[:scanner_name],
-                finding_name: scan_finding[:name],
+                finding_name: scan_finding[:name]
               }
               new_finding[:start_column] = scan_finding[:start_column] if scan_finding.key?(:start_column)
               new_finding[:end_column] = scan_finding[:end_column] if scan_finding.key?(:end_column)
