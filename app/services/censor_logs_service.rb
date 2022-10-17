@@ -26,9 +26,7 @@ class CensorLogsService < BaseLogsService
 
     endline_character = "\r\n"
     content = File.read(File.join(@logs_dir, filename))
-    if !content.include? endline_character
-      endline_character = "\n"
-    end
+    endline_character = "\n" unless content.include? endline_character
 
     content_lines = content.split(endline_character)
     censored_content_lines = process_findings(content_lines, findings)
@@ -52,13 +50,12 @@ class CensorLogsService < BaseLogsService
       archived: remote_log.archived?,
       token: 'STUB' # STANTODO: STUB
     )
-    
+
     store_scan_report(contents, remote_log, log, findings, censored_content)
   end
 
   def process_findings(contents, findings)
     findings.each do |start_line, line_findings|
-      applied_line_findings = []
       start_line_to_censor = start_line
       start_column_to_censor = nil
       end_line_to_censor = start_line
@@ -66,33 +63,38 @@ class CensorLogsService < BaseLogsService
       line_findings.each do |line_finding|
         line_finding = line_finding.with_indifferent_access
 
-        if line_finding.key?(:start_column) && line_finding[:start_column] > 0
-          start_column_to_censor = line_finding[:start_column] unless start_column_to_censor != nil && line_finding[:start_column] > start_column_to_censor
+        if line_finding.key?(:start_column) && (line_finding[:start_column]).positive?
+          unless !start_column_to_censor.nil? && line_finding[:start_column] > start_column_to_censor
+            start_column_to_censor = line_finding[:start_column]
+          end
         else
           start_column_to_censor = 1
         end
 
         current_end_line = line_finding.key?(:end_line) ? line_finding[:end_line] : start_line_to_censor
         end_line_to_censor = current_end_line unless current_end_line < end_line_to_censor
-
         current_end_column = line_finding.key?(:end_column) ? line_finding[:end_column] : (contents[end_line_to_censor.to_i - 1].length + 1)
-        end_column_to_censor = current_end_column unless end_column_to_censor != nil && current_end_column < end_column_to_censor
+        unless !end_column_to_censor.nil? && current_end_column < end_column_to_censor
+          end_column_to_censor = current_end_column
+        end
       end
-      (start_line_to_censor-1..end_line_to_censor-1).each do |n|
+
+      (start_line_to_censor - 1..end_line_to_censor - 1).each do |n|
         line_length = contents[n].length
-        if start_line_to_censor - 1 == n && n == end_line_to_censor -1
-          before = start_column_to_censor - 2 > 0 ? contents[n][..start_column_to_censor-2] : ''
-          censored = '*' * contents[n][start_column_to_censor-1..end_column_to_censor-2].length
-          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor-1..] : ''
+
+        if start_line_to_censor - 1 == n && n == end_line_to_censor - 1
+          before = (start_column_to_censor - 2).positive? ? contents[n][..start_column_to_censor - 2] : ''
+          censored = '*' * contents[n][start_column_to_censor - 1..end_column_to_censor - 2].length
+          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor - 1..] : ''
           contents[n] = before + censored + after
         elsif start_line_to_censor - 1 == n
-          before = start_column_to_censor - 2 > 0 ? contents[n][..start_column_to_censor-2] : ''
-          censored = '*' * contents[n][start_column_to_censor-1..].length
+          before = (start_column_to_censor - 2).positive? ? contents[n][..start_column_to_censor - 2] : ''
+          censored = '*' * contents[n][start_column_to_censor - 1..].length
           contents[n] = before + censored
         elsif end_line_to_censor - 1 == n
-          censored_part_length = contents[n][..end_column_to_censor-2].length
+          censored_part_length = contents[n][..end_column_to_censor - 2].length
           censored = '*' * (censored_part_length < line_length ? censored_part_length : line_length)
-          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor-1..] : ''
+          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor - 1..] : ''
           contents[n] = censored + after
         else
           contents[n] = '*' * line_length
