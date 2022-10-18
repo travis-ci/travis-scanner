@@ -98,10 +98,8 @@ module Travis
           scan_findings = {}
 
           result['Secrets'].each do |secret|
-            match_data = secret['Code']['Lines'][2]['Content'].to_enum(:scan, /\*+/).map do
-              [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
-            end
-
+            match_data = secret.dig('Code', 'Lines', 2, 'Content').to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+            
             match_data.each do |match|
               scan_findings[[secret['Title'], secret['StartLine'], match.first, match.last]] = {
                 name: secret['Title'],
