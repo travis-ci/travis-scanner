@@ -2,6 +2,8 @@ module Travis
   module Scanner
     module Plugins
       class Trivy < Base
+        LineColumn = Struct.new(:start_line, :start_column)
+
         def initialize(plugin_scanner_cmd, plugin_config)
           super(plugin_scanner_cmd, plugin_config)
 
@@ -25,12 +27,15 @@ module Travis
           newline_locations = get_log_newline_locations finding[:log_id]
           final_scan_findings = []
           lines_to_add = 0
-          finding[:scan_findings] = finding[:scan_findings].sort_by { |obj| obj[:start_line] }
-          (0..finding[:scan_findings].length - 1).each do |index|
-            scan_finding = finding[:scan_findings][index]
+
+          unique_scan_findings = finding[:scan_findings].group_by { |scan_f| LineColumn.new(scan_f[:start_line], scan_f[:start_column]) }
+          line_columns = unique_scan_findings.keys.sort_by { |e| [e.start_line, e.start_column] }
+          (0..line_columns.length - 1).each do |index|
+            line_column = line_columns[index]
+            scan_finding = unique_scan_findings[line_column][0]
             actual_line = scan_finding[:start_line] + lines_to_add - 2
             if index.positive?
-              scan_finding_before = finding[:scan_findings][index - 1]
+              scan_finding_before = unique_scan_findings[line_columns[index - 1]][0]
               if actual_line < scan_finding_before[:end_line]
                 actual_line = scan_finding_before[:end_line] - 1
                 scan_finding[:start_column] -= newline_locations[scan_finding_before[:end_line] - 1] - newline_locations[scan_finding_before[:start_line] - 2]
@@ -51,12 +56,14 @@ module Travis
             else
               end_column += (scan_finding[:start_column] - 1)
             end
-            scan_finding[:start_line] = actual_line + 2
-            scan_finding[:start_column] = scan_finding[:start_column]
-            scan_finding[:end_line] = scan_finding[:start_line] + newlines_found
-            scan_finding[:end_column] = end_column
-            scan_finding.delete(:column)
-            scan_finding.delete(:line)
+            unique_scan_findings[line_column].each do |scan_finding|
+              scan_finding[:start_line] = actual_line + 2
+              scan_finding[:start_column] = scan_finding[:start_column]
+              scan_finding[:end_line] = scan_finding[:start_line] + newlines_found
+              scan_finding[:end_column] = end_column
+              scan_finding.delete(:column)
+              scan_finding.delete(:line)
+            end
           end
           finding
         end
@@ -98,19 +105,51 @@ module Travis
           scan_findings = {}
 
           result['Secrets'].each do |secret|
-            match_data = secret.dig('Code', 'Lines', 2, 'Content').to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
-            
-            match_data.each do |match|
-              scan_findings[[secret['Title'], secret['StartLine'], match.first, match.last]] = {
+            matching_lines = secret.dig('Code', 'Lines').select {|num| num['FirstCause'] }
+            if matching_lines.one?
+              match_data = matching_lines.dig(0, 'Content').to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+              match_data.each do |match|
+                finding[:scan_findings] << {
+                  name: secret['Title'],
+                  start_column: match.first,
+                  start_line: secret['StartLine'],
+                  size: match.last
+                }
+              end
+            else
+              size = 0
+              start_column = nil
+              matching_lines.each do |matching_line|
+                line_content = matching_line['Content']
+                if matching_line['FirstCause']
+                  match_data = line_content.to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+                  match_data.each do |match|
+                    if match.first + match.last == line_content.length + 1
+                      start_column = match.first
+                      size += match.last
+                    end
+                  end
+                elsif matching_line['LastCause']
+                  match_data = line_content.to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+                  match_data.each do |match|
+                    if match.first == 1
+                      size += match.last
+                    end
+                  end
+                elsif matching_line['IsCause']
+                  size += line_content.length
+                end
+              end
+              finding[:scan_findings] << {
                 name: secret['Title'],
-                start_line: secret['StartLine'],
                 start_column: match.first,
-                size: match.last
+                start_line: secret['StartLine'],
+                size: size
               }
             end
           end
 
-          finding[:scan_findings] = scan_findings.values
+          finding[:scan_findings] = finding[:scan_findings].uniq
 
           compute_endings(finding)
         end
