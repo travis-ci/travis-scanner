@@ -55,9 +55,8 @@ module Travis
           lines_to_add = 0
           current_sf_start_line = -1
           current_start_line = -1
-          (0..line_columns.length - 1).each do |index|
-            line_column = line_columns[index]
-            sf = unique_scan_findings[line_column][0]
+          line_columns.each do |line_column|
+            sf = unique_scan_findings[line_column].first
             sf_size = sf[:size]
             sf_start_line = sf[:start_line]
             sf_start_column = sf[:start_column]
