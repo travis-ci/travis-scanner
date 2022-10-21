@@ -8,6 +8,8 @@ describe SentryHandling, type: :controller do
   end
 
   before do
+    request.headers['Authorization'] = "Token token=#{Settings.scanner_auth_token}"
+
     routes.draw do
       get 'fake_action' => 'anonymous#fake_action'
     end

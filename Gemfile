@@ -41,6 +41,12 @@ gem 'redlock'
 gem 'sidekiq'
 gem 'sidekiq-scheduler'
 
+# Pagination
+gem 'kaminari'
+
+# Serializer
+gem 'active_model_serializers'
+
 # Logging
 gem 'lograge'
 

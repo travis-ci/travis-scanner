@@ -99,6 +99,7 @@ class ProcessLogsService < BaseLogsService
           log_id: log_id,
           content: {},
           job_id: log.job_id,
+          repository_id: log.job&.repository_id,
           owner_id: log.job&.owner_id,
           owner_type: log.job&.owner_type,
           issues_found: 0,

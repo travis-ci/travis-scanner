@@ -3,4 +3,5 @@ class ScanResult < ApplicationRecord
 
   belongs_to :job
   belongs_to :log
+  belongs_to :repository
 end

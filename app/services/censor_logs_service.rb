@@ -38,6 +38,7 @@ class CensorLogsService < BaseLogsService
     ScanResult.create(
       log_id: log_id,
       job_id: log.job_id,
+      repository_id: log.job&.repository_id,
       owner_id: log.job&.owner_id,
       owner_type: log.job&.owner_type,
       content: findings,
