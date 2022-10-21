@@ -15,55 +15,87 @@ module Travis
 
         def get_log_newline_locations(log_id)
           file_path = File.join(@current_run_logs_path, log_id)
-          newline_locations = [-1]
+          newline_locations = [0]
           puts file_path
           File.readlines(file_path).each do |line|
             newline_locations << (line.length + newline_locations[-1])
           end
-          newline_locations.drop(1)
+          newline_locations
+        end
+
+        def update_all_scan_findings(scan_findings, start_line, start_column, end_line, end_column)
+          scan_findings.each do |scan_finding|
+            scan_finding[:start_line] = start_line
+            scan_finding[:start_column] = start_column
+            scan_finding[:end_line] = end_line
+            scan_finding[:end_column] = end_column
+            scan_finding.delete(:column)
+            scan_finding.delete(:line)
+          end
+        end
+
+        def sum_up_lines(newline_locations, from, to)
+          from = 0 if from < 0
+          from = newline_locations.length - 1 if from >= newline_locations.length
+          to = 0 if to < 0
+          to = newline_locations.length - 1 if to >= newline_locations.length
+          newline_locations[to] - newline_locations[from]
+        end
+
+        def get_real_line_size(newline_locations, line_number)
+          sum_up_lines(newline_locations, line_number - 1, line_number)
         end
 
         def compute_endings(finding)
           newline_locations = get_log_newline_locations finding[:log_id]
-          final_scan_findings = []
-          lines_to_add = 0
 
           unique_scan_findings = finding[:scan_findings].group_by { |scan_f| LineColumn.new(scan_f[:start_line], scan_f[:start_column]) }
           line_columns = unique_scan_findings.keys.sort_by { |e| [e.start_line, e.start_column] }
+
+          lines_to_add = 0
+          current_sf_start_line = -1
+          current_start_line = -1
           (0..line_columns.length - 1).each do |index|
             line_column = line_columns[index]
-            scan_finding = unique_scan_findings[line_column][0]
-            actual_line = scan_finding[:start_line] + lines_to_add - 2
-            if index.positive?
-              scan_finding_before = unique_scan_findings[line_columns[index - 1]][0]
-              if actual_line < scan_finding_before[:end_line]
-                actual_line = scan_finding_before[:end_line] - 1
-                scan_finding[:start_column] -= newline_locations[scan_finding_before[:end_line] - 1] - newline_locations[scan_finding_before[:start_line] - 2]
-              end
-            end
-            line_size = newline_locations[actual_line + 1] - newline_locations[actual_line]
-            line_size -= (scan_finding[:start_column] - 1)
-            end_column = scan_finding[:size] + 1
-            newlines_found = 0
-            while line_size < scan_finding[:size]
-              end_column = scan_finding[:size] - line_size
-              newlines_found += 1
-              line_size += (newline_locations[actual_line + newlines_found + 1] - newline_locations[actual_line + newlines_found])
-            end
-            lines_to_add += newlines_found
-            if newlines_found.positive?
-              lines_to_add += 1 if line_size == scan_finding[:size]
+            sf = unique_scan_findings[line_column][0]
+            sf_size = sf[:size]
+            sf_start_line = sf[:start_line]
+            sf_start_column = sf[:start_column]
+
+            start_line = sf_start_line + lines_to_add
+            if current_sf_start_line == sf_start_line
+              sf_start_column -= sum_up_lines(
+                newline_locations,
+                current_start_line - 1,
+                start_line - 1
+              )
             else
-              end_column += (scan_finding[:start_column] - 1)
+              current_sf_start_line = sf_start_line
+              current_start_line = start_line
             end
-            unique_scan_findings[line_column].each do |scan_finding|
-              scan_finding[:start_line] = actual_line + 2
-              scan_finding[:start_column] = scan_finding[:start_column]
-              scan_finding[:end_line] = scan_finding[:start_line] + newlines_found
-              scan_finding[:end_column] = end_column
-              scan_finding.delete(:column)
-              scan_finding.delete(:line)
+
+            current_line_size = get_real_line_size(newline_locations, start_line)
+            size_available_on_lines_parsed = current_line_size - (sf_start_column - 1)
+
+            newlines_found = 0
+            while size_available_on_lines_parsed < sf_size
+              newlines_found += 1
+              current_line_size = get_real_line_size(newline_locations, start_line + newlines_found)
+              size_available_on_lines_parsed += current_line_size
             end
+
+            end_line = start_line + newlines_found
+            end_column = current_line_size - (size_available_on_lines_parsed - sf_size) + 1
+            update_all_scan_findings(
+              unique_scan_findings[line_column],
+              start_line,
+              sf_start_column,
+              end_line,
+              end_column
+            )
+
+            newlines_found += 1 if newlines_found.positive? && size_available_on_lines_parsed == sf_size
+            lines_to_add += newlines_found
           end
           finding
         end
@@ -102,7 +134,6 @@ module Travis
             log_id: result['Target'],
             scan_findings: []
           }
-          scan_findings = {}
 
           result['Secrets'].each do |secret|
             matching_lines = secret.dig('Code', 'Lines').select {|num| num['FirstCause'] }
