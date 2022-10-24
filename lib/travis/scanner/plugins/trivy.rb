@@ -18,6 +18,7 @@ module Travis
           File.readlines(File.join(@current_run_logs_path, log_id)).each do |line|
             newline_locations << (line.length + newline_locations[-1])
           end
+
           newline_locations
         end
 
@@ -156,10 +157,12 @@ module Travis
 
           result['Secrets'].each do |secret|
             matching_lines = secret.dig('Code', 'Lines').select { |num| num['FirstCause'] }
+
             if matching_lines.one?
               match_data = matching_lines.dig(0, 'Content').to_enum(:scan, /\*+/).map do
                 [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
               end
+
               match_data.each do |match|
                 finding[:scan_findings] << {
                   name: secret['Title'],
