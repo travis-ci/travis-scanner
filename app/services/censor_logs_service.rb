@@ -24,9 +24,10 @@ class CensorLogsService < BaseLogsService
     # Shouldn't happen, because we're passing only the affected logs
     return if findings.blank?
 
-    endline_character = "\r\n"
     content = File.read(File.join(@logs_dir, filename))
-    endline_character = "\n" unless content.include? endline_character
+
+    endline_character = "\r\n"
+    endline_character = "\n" unless content.include?(endline_character)
 
     content_lines = content.split(endline_character)
     censored_content_lines = process_findings(content_lines, findings)
