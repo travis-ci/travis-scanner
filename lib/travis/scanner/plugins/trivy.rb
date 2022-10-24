@@ -63,7 +63,7 @@ module Travis
         end
 
         def compute_endings(finding)
-          newline_locations = get_log_newline_locations finding[:log_id]
+          newline_locations = get_log_newline_locations(finding[:log_id])
 
           unique_scan_findings = finding[:scan_findings].group_by do |scan_f|
             LineColumn.new(scan_f[:start_line], scan_f[:start_column])
@@ -156,8 +156,7 @@ module Travis
           }
 
           result['Secrets'].each do |secret|
-            matching_lines = secret.dig('Code', 'Lines').select { |num| num['FirstCause'] }
-
+            matching_lines = secret.dig('Code', 'Lines').select { |num| num['IsCause'] }
             if matching_lines.one?
               match_data = matching_lines.dig(0, 'Content').to_enum(:scan, /\*+/).map do
                 [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
@@ -171,9 +170,9 @@ module Travis
                   size: match.last
                 }
               end
+            # This makes sense only if Trivy starts to output private keys as multi-line matches
             else
               size = 0
-              start_column = nil
 
               matching_lines.each do |matching_line|
                 line_content = matching_line['Content']
@@ -182,10 +181,7 @@ module Travis
                 end
                 if matching_line['FirstCause']
                   match_data.each do |match|
-                    if match.first + match.last == line_content.length + 1
-                      start_column = match.first
-                      size += match.last
-                    end
+                    size += match.last if match.first + match.last == line_content.length + 1
                   end
                 elsif matching_line['LastCause']
                   match_data.each do |match|
@@ -205,7 +201,7 @@ module Travis
             end
           end
 
-          finding[:scan_findings] = finding[:scan_findings].uniq
+          finding[:scan_findings].uniq!
 
           compute_endings(finding)
         end

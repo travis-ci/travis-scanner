@@ -88,18 +88,21 @@ class CensorLogsService < BaseLogsService
       (start_line_to_censor - 1..end_line_to_censor - 1).each do |n|
         line_length = contents[n].length
 
-        if start_line_to_censor - 1 == n && n == end_line_to_censor - 1
+        if n == start_line_to_censor - 1
           before = (start_column_to_censor - 2).positive? ? contents[n][..start_column_to_censor - 2] : ''
-          censored = '*' * contents[n][start_column_to_censor - 1..end_column_to_censor - 2].length
-          after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor - 1..] : ''
+          if n == end_line_to_censor - 1
+            end_index = end_column_to_censor - 2
+            after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor - 1..] : ''
+          else
+            end_index = -1
+            after = ''
+          end
+
+          censored = '*' * contents[n][start_column_to_censor - 1..end_index].length
           contents[n] = before + censored + after
-        elsif start_line_to_censor - 1 == n
-          before = (start_column_to_censor - 2).positive? ? contents[n][..start_column_to_censor - 2] : ''
-          censored = '*' * contents[n][start_column_to_censor - 1..].length
-          contents[n] = before + censored
-        elsif end_line_to_censor - 1 == n
+        elsif n == end_line_to_censor - 1
           censored_part_length = contents[n][..end_column_to_censor - 2].length
-          censored = '*' * (censored_part_length < line_length ? censored_part_length : line_length)
+          censored = '*' * [censored_part_length, line_length].min
           after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor - 1..] : ''
           contents[n] = censored + after
         else

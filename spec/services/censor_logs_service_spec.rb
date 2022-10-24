@@ -41,13 +41,48 @@ RSpec.describe CensorLogsService, type: :service do
         allow(remote_log).to receive(:update_content)
       end
 
-      it 'enqueues the log for scan' do
+      it 'censors the log' do
         expect { service.call }.to change(ScanTrackerEntry, :count).by(3)
 
         expect(remote_log).to have_received(:store_scan_report)
         expect(remote_log).to have_received(:update_content)
-        expect(log.reload.content).to eq("content ********************\nTest")
+        expect(log.reload.content).to eq("****************************\nTest")
         expect(ScanResult.last.log_id).to eq(log.id)
+      end
+
+      context 'when there is a multi-line key' do
+        let(:private_key) { File.read(File.expand_path('../support/files/pkey', __dir__)) }
+        let(:censored_log) { File.read(File.expand_path('../support/files/pkey_censored', __dir__)) }
+        let(:log) do
+          create :log, scan_status: Log.scan_statuses[:ready_for_scan], content: "example content\n#{private_key}\nTest"
+        end
+        let(:plugins_result) do
+          {
+            "#{log.id}.log" => {
+              2 => [
+                {
+                  plugin_name: 'trivy',
+                  finding_name: 'Asymmetric Private Key',
+                  start_column: 36,
+                  end_column: 48,
+                  end_line: 38
+                },
+                {
+                  plugin_name: 'detect_secrets',
+                  finding_name: 'Private Key'
+                }
+              ]
+            }
+          }
+        end
+
+        it 'detects and strips key' do
+          service.call
+
+          expect(remote_log).to have_received(:store_scan_report)
+          expect(remote_log).to have_received(:update_content)
+          expect(log.reload.content).to eq(censored_log)
+        end
       end
     end
 

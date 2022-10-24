@@ -28,10 +28,8 @@ RSpec.describe Travis::Scanner::Plugins::DetectSecrets do
               log_id: "#{log.id}.log",
               scan_findings: [
                 {
-                  column: -1,
-                  line: 1,
-                  name: 'AWS Access Key',
-                  size: -1
+                  start_line: 1,
+                  name: 'AWS Access Key'
                 }
               ]
             }
