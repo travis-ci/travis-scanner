@@ -74,7 +74,11 @@ class CensorLogsService < BaseLogsService
 
         current_end_line = line_finding.key?(:end_line) ? line_finding[:end_line] : start_line_to_censor
         end_line_to_censor = current_end_line unless current_end_line < end_line_to_censor
-        current_end_column = line_finding.key?(:end_column) ? line_finding[:end_column] : (contents[end_line_to_censor.to_i - 1].length + 1)
+        current_end_column = if line_finding.key?(:end_column)
+                               line_finding[:end_column]
+                             else
+                               contents[end_line_to_censor.to_i - 1].length + 1
+                             end
         unless !end_column_to_censor.nil? && current_end_column < end_column_to_censor
           end_column_to_censor = current_end_column
         end
