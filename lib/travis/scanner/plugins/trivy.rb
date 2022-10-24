@@ -53,9 +53,9 @@ module Travis
         end
 
         def sum_up_lines(newline_locations, from, to)
-          from = 0 if from < 0
+          from = 0 if from.negative?
           from = newline_locations.length - 1 if from >= newline_locations.length
-          to = 0 if to < 0
+          to = 0 if to.negative?
           to = newline_locations.length - 1 if to >= newline_locations.length
           newline_locations[to] - newline_locations[from]
         end
@@ -67,12 +67,15 @@ module Travis
         def compute_endings(finding)
           newline_locations = get_log_newline_locations finding[:log_id]
 
-          unique_scan_findings = finding[:scan_findings].group_by { |scan_f| LineColumn.new(scan_f[:start_line], scan_f[:start_column]) }
+          unique_scan_findings = finding[:scan_findings].group_by do |scan_f|
+            LineColumn.new(scan_f[:start_line], scan_f[:start_column])
+          end
           line_columns = unique_scan_findings.keys.sort_by { |e| [e.start_line, e.start_column] }
 
           lines_to_add = 0
           current_sf_start_line = -1
           current_start_line = -1
+
           line_columns.each do |line_column|
             sf = unique_scan_findings[line_column].first
             sf_size = sf[:size]
@@ -116,6 +119,7 @@ module Travis
           end
 
           remove_erroneous_column_data(finding)
+
           finding
         end
 
@@ -155,9 +159,11 @@ module Travis
           }
 
           result['Secrets'].each do |secret|
-            matching_lines = secret.dig('Code', 'Lines').select {|num| num['FirstCause'] }
+            matching_lines = secret.dig('Code', 'Lines').select { |num| num['FirstCause'] }
             if matching_lines.one?
-              match_data = matching_lines.dig(0, 'Content').to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+              match_data = matching_lines.dig(0, 'Content').to_enum(:scan, /\*+/).map do
+                [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
+              end
               match_data.each do |match|
                 finding[:scan_findings] << {
                   name: secret['Title'],
@@ -169,10 +175,15 @@ module Travis
             else
               size = 0
               start_column = nil
+
               matching_lines.each do |matching_line|
                 line_content = matching_line['Content']
+
                 if matching_line['FirstCause']
-                  match_data = line_content.to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+                  match_data = line_content.to_enum(:scan, /\*+/).map do
+                    [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
+                  end
+
                   match_data.each do |match|
                     if match.first + match.last == line_content.length + 1
                       start_column = match.first
@@ -180,16 +191,18 @@ module Travis
                     end
                   end
                 elsif matching_line['LastCause']
-                  match_data = line_content.to_enum(:scan, /\*+/).map { [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length] }
+                  match_data = line_content.to_enum(:scan, /\*+/).map do
+                    [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
+                  end
+
                   match_data.each do |match|
-                    if match.first == 1
-                      size += match.last
-                    end
+                    size += match.last if match.first == 1
                   end
                 elsif matching_line['IsCause']
                   size += line_content.length
                 end
               end
+
               finding[:scan_findings] << {
                 name: secret['Title'],
                 start_column: match.first,
