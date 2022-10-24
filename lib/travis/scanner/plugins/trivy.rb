@@ -14,10 +14,8 @@ module Travis
         private
 
         def get_log_newline_locations(log_id)
-          file_path = File.join(@current_run_logs_path, log_id)
           newline_locations = [0]
-          puts file_path
-          File.readlines(file_path).each do |line|
+          File.readlines(File.join(@current_run_logs_path, log_id)).each do |line|
             newline_locations << (line.length + newline_locations[-1])
           end
           newline_locations
@@ -36,8 +34,7 @@ module Travis
 
         def remove_erroneous_column_data(finding)
           final_scan_findings = []
-          line_scan_findings = finding[:scan_findings].group_by { |scan_f| scan_f[:start_line] }
-          line_scan_findings.each_value do |line_sfs|
+          finding[:scan_findings].group_by { |scan_f| scan_f[:start_line] }.each_value do |line_sfs|
             if line_sfs.one?
               final_scan_findings.push(line_sfs.first)
             else
@@ -70,6 +67,7 @@ module Travis
           unique_scan_findings = finding[:scan_findings].group_by do |scan_f|
             LineColumn.new(scan_f[:start_line], scan_f[:start_column])
           end
+
           line_columns = unique_scan_findings.keys.sort_by { |e| [e.start_line, e.start_column] }
 
           lines_to_add = 0
@@ -104,14 +102,12 @@ module Travis
               size_available_on_lines_parsed += current_line_size
             end
 
-            end_line = start_line + newlines_found
-            end_column = current_line_size - (size_available_on_lines_parsed - sf_size) + 1
             update_all_scan_findings(
               unique_scan_findings[line_column],
               start_line,
               sf_start_column,
-              end_line,
-              end_column
+              start_line + newlines_found,
+              current_line_size - (size_available_on_lines_parsed - sf_size) + 1
             )
 
             newlines_found += 1 if newlines_found.positive? && size_available_on_lines_parsed == sf_size
@@ -178,12 +174,10 @@ module Travis
 
               matching_lines.each do |matching_line|
                 line_content = matching_line['Content']
-
+                match_data = line_content.to_enum(:scan, /\*+/).map do
+                  [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
+                end
                 if matching_line['FirstCause']
-                  match_data = line_content.to_enum(:scan, /\*+/).map do
-                    [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
-                  end
-
                   match_data.each do |match|
                     if match.first + match.last == line_content.length + 1
                       start_column = match.first
@@ -191,10 +185,6 @@ module Travis
                     end
                   end
                 elsif matching_line['LastCause']
-                  match_data = line_content.to_enum(:scan, /\*+/).map do
-                    [Regexp.last_match.begin(0) + 1, Regexp.last_match.to_s.length]
-                  end
-
                   match_data.each do |match|
                     size += match.last if match.first == 1
                   end
