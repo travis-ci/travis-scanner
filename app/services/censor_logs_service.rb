@@ -32,7 +32,7 @@ class CensorLogsService < BaseLogsService
     censored_content_lines = process_findings(content_lines, findings)
     censored_content = censored_content_lines.join(endline_character)
 
-    process_result(log_id, findings, contents, censored_content)
+    process_result(log_id, findings, content, censored_content)
   end
 
   def process_result(log_id, findings, contents, censored_content)

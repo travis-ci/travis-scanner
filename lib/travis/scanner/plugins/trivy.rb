@@ -34,6 +34,24 @@ module Travis
           end
         end
 
+        def remove_erroneous_column_data(finding)
+          final_scan_findings = []
+          line_scan_findings = finding[:scan_findings].group_by { |scan_f| scan_f[:start_line] }
+          line_scan_findings.each_value do |line_sfs|
+            if line_sfs.one?
+              final_scan_findings.push(line_sfs.first)
+            else
+              line_sfs.each do |sf|
+                sf.delete(:start_column)
+                sf.delete(:end_column)
+                sf.delete(:size)
+                final_scan_findings.push(sf)
+              end
+            end
+          end
+          finding[:scan_findings] = final_scan_findings.uniq
+        end
+
         def sum_up_lines(newline_locations, from, to)
           from = 0 if from < 0
           from = newline_locations.length - 1 if from >= newline_locations.length
@@ -96,6 +114,8 @@ module Travis
             newlines_found += 1 if newlines_found.positive? && size_available_on_lines_parsed == sf_size
             lines_to_add += newlines_found
           end
+
+          remove_erroneous_column_data(finding)
           finding
         end
 
