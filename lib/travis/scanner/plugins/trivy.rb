@@ -174,6 +174,7 @@ module Travis
             else
               size = 0
 
+              start_column = nil
               matching_lines.each do |matching_line|
                 line_content = matching_line['Content']
                 match_data = line_content.to_enum(:scan, /\*+/).map do
@@ -181,7 +182,10 @@ module Travis
                 end
                 if matching_line['FirstCause']
                   match_data.each do |match|
-                    size += match.last if match.first + match.last == line_content.length + 1
+                    if match.first + match.last == line_content.length + 1
+                      start_column = match.first
+                      size += match.last
+                    end
                   end
                 elsif matching_line['LastCause']
                   match_data.each do |match|
@@ -194,7 +198,7 @@ module Travis
 
               finding[:scan_findings] << {
                 name: secret['Title'],
-                start_column: match.first,
+                start_column: start_column,
                 start_line: secret['StartLine'],
                 size: size
               }
