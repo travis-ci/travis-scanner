@@ -28,6 +28,32 @@ RSpec.describe ProcessLogsService, type: :service do
       end
     end
 
+    context 'when there are logs with \r\n and \r' do
+      let!(:log) do
+        create :log,
+               scan_status: Log.scan_statuses[:queued],
+               content: "content \r\n AKIAIOSFODNN7EXAMPLE \n Test\r contentcontent\r\n AKIAIOSFODNN7EXAMPLE  \r cont"
+      end
+      let(:temporary_substitutions) do
+        {
+          log.id => [
+            ["\r\n", [8, 54]],
+            ["\r", [37, 77]]
+          ]
+        }
+      end
+
+      before do
+        allow(CensorLogsService).to receive(:call).with(temporary_substitutions, anything, anything, anything, anything)
+      end
+
+      it 'sends the temporary substitutions to censor service' do
+        service.call
+        expect(CensorLogsService).to have_received(:call).with(temporary_substitutions, anything, anything, anything,
+                                                               anything)
+      end
+    end
+
     context 'when there are no queued logs' do
       let!(:log) { create :log }
 

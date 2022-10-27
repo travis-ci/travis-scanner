@@ -1,8 +1,11 @@
 require 'rails_helper'
 
 RSpec.describe CensorLogsService, type: :service do
-  subject(:service) { described_class.new(log_ids, grouped_logs, log_path, plugins_result) }
+  subject(:service) { described_class.new(temporary_substitutions, log_ids, grouped_logs, log_path, plugins_result) }
 
+  let(:temporary_substitutions) do
+    { log.id => [["\r\n", []], ["\r", []]] }
+  end
   let(:log_ids) { [log.id] }
   let(:grouped_logs) { [log].index_by(&:id) }
   let(:log_path) { 'tmp/build_job_logs/1111111111' }
@@ -77,6 +80,57 @@ RSpec.describe CensorLogsService, type: :service do
         end
 
         it 'detects and strips key' do
+          service.call
+
+          expect(remote_log).to have_received(:store_scan_report)
+          expect(remote_log).to have_received(:update_content)
+          expect(log.reload.content).to eq(censored_log)
+        end
+      end
+
+      context 'when there are substitutions' do
+        let!(:log) do
+          create :log,
+                 scan_status: Log.scan_statuses[:ready_for_scan],
+                 content: "content \n AKIAIOSFODNN7EXAMPLE \n Test\n contentcontent\n AKIAIOSFODNN7EXAMPLE  \n cont"
+        end
+        let(:temporary_substitutions) do
+          {
+            log.id => [
+              ["\r\n", [8, 54]],
+              ["\r", [37, 77]]
+            ]
+          }
+        end
+        let(:censored_log) do
+          "content \r\n ******************** \n Test\r contentcontent\r\n ********************  \r cont"
+        end
+        let(:plugins_result) do
+          {
+            "#{log.id}.log" => {
+              2 => [
+                {
+                  end_column: 22,
+                  end_line: 2,
+                  finding_name: 'AWS Access Key ID',
+                  plugin_name: 'trivy',
+                  start_column: 2
+                }
+              ],
+              5 => [
+                {
+                  end_column: 22,
+                  end_line: 5,
+                  finding_name: 'AWS Access Key ID',
+                  plugin_name: 'trivy',
+                  start_column: 2
+                }
+              ]
+            }
+          }
+        end
+
+        it 'detects, strips keys and reverts substitutions' do
           service.call
 
           expect(remote_log).to have_received(:store_scan_report)

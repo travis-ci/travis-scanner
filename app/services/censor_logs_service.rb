@@ -1,9 +1,10 @@
 require 'English'
 
 class CensorLogsService < BaseLogsService
-  def initialize(log_ids, grouped_logs, logs_dir, plugins_result)
+  def initialize(temporary_substitutions, log_ids, grouped_logs, logs_dir, plugins_result)
     super()
 
+    @temporary_substitutions = temporary_substitutions
     @log_ids = log_ids
     @grouped_logs = grouped_logs
     @logs_dir = logs_dir
@@ -18,6 +19,21 @@ class CensorLogsService < BaseLogsService
     @log_ids.each { |log_id| process_log_id(log_id) }
   end
 
+  def revert_substitutions(content, substitutions)
+    substitutions.each do |reg, substitutions_of_reg|
+      substitutions_of_reg.each do |index|
+        if reg.length == 1
+          content[index] = reg
+        else
+          before = content[..index - 1]
+          after = (index + 1) < content.length ? content[index + 1..] : ''
+          content = before + reg + after
+        end
+      end
+    end
+    content
+  end
+
   def process_log_id(log_id)
     filename = "#{log_id}.log"
     findings = @plugins_result[filename]
@@ -26,12 +42,11 @@ class CensorLogsService < BaseLogsService
 
     content = File.read(File.join(@logs_dir, filename))
 
-    endline_character = "\r\n"
-    endline_character = "\n" unless content.include?(endline_character)
-
-    content_lines = content.split(endline_character)
+    content_lines = content.split("\n")
     censored_content_lines = process_findings(content_lines, findings)
-    censored_content = censored_content_lines.join(endline_character)
+    censored_content = censored_content_lines.join("\n")
+
+    censored_content = revert_substitutions(censored_content, @temporary_substitutions[log_id].reverse)
 
     process_result(log_id, findings, content, censored_content)
   end
@@ -89,7 +104,7 @@ class CensorLogsService < BaseLogsService
         line_length = contents[n].length
 
         if n == start_line_to_censor - 1
-          before = (start_column_to_censor - 2).positive? ? contents[n][..start_column_to_censor - 2] : ''
+          before = (start_column_to_censor - 2).negative? ? '' : contents[n][..start_column_to_censor - 2]
           if n == end_line_to_censor - 1
             end_index = end_column_to_censor - 2
             after = end_column_to_censor - 2 < line_length ? contents[n][end_column_to_censor - 1..] : ''
@@ -97,7 +112,6 @@ class CensorLogsService < BaseLogsService
             end_index = -1
             after = ''
           end
-
           censored = '*' * contents[n][start_column_to_censor - 1..end_index].length
           contents[n] = before + censored + after
         elsif n == end_line_to_censor - 1

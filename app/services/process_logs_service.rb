@@ -34,35 +34,63 @@ class ProcessLogsService < BaseLogsService
   end
 
   def process_logs(logs)
-    logs.each { |log| download_log(log) }
+    temporary_substitutions = prepare_logs(logs)
+    run_scanner(logs, temporary_substitutions)
+  end
 
-    run_scanner(logs)
+  def prepare_logs(logs)
+    substitutions = {}
+    logs.each do |log|
+      content = download_log(log)
+      next if content.blank?
+
+      substitutions[log.id] = []
+      content = substitute_regexes(content, ["\r\n", "\r"], "\n", substitutions[log.id])
+      write_log_to_file(log.id, content)
+    end
+    substitutions
+  end
+
+  def substitute_regexes(content, regs_to_replace, to_str, substitutions)
+    regs_to_replace.each do |from_reg|
+      substitutions_from_reg = []
+      content = replace_in_content(content, from_reg, to_str, substitutions_from_reg)
+      substitutions.push([from_reg, substitutions_from_reg])
+    end
+    content
+  end
+
+  def replace_in_content(content, from_reg, to_str, substitutions_of_str)
+    r_to_replace = Regexp.new(from_reg)
+    content.enum_for(:scan, r_to_replace).map do
+      substitutions_of_str.push(Regexp.last_match.offset(0).first)
+    end
+    content.gsub(r_to_replace, to_str)
   end
 
   def download_log(log)
     Rails.logger.info("Processing log with id=[#{log.id}]")
 
     remote_log = Travis::RemoteLog.new(log.job_id, log.archived_at, log.archive_verified?)
-    write_log_to_file(
-      log.id,
-      remote_log.archived? ? remote_log.archived_log_content : log.content
-    )
+
+    remote_log.archived? ? remote_log.archived_log_content : log.content
   rescue => e
     update_logs_status([log.id], :error)
 
     Rails.logger.error(e.message)
     Sentry.capture_exception(e)
+    nil
   end
 
   def write_log_to_file(id, content)
-    File.write(File.join(build_job_logs_dir, "#{id}.log"), content) if content.present?
+    File.write(File.join(build_job_logs_dir, "#{id}.log"), content)
   end
 
   def build_job_logs_dir
     @build_job_logs_dir ||= File.join("tmp/build_job_logs/#{Time.now.to_i}")
   end
 
-  def run_scanner(logs)
+  def run_scanner(logs, temporary_substitutions)
     log_ids = logs.map(&:id)
     if Dir.entries(build_job_logs_dir).count == 2 # . and ..
       errored_log_ids = Log.error.where(id: log_ids).pluck(:id)
@@ -71,12 +99,12 @@ class ProcessLogsService < BaseLogsService
       return
     end
 
-    process_plugins_result(log_ids, logs, Travis::Scanner::Runner.new.run(build_job_logs_dir))
+    process_plugins_result(log_ids, logs, temporary_substitutions, Travis::Scanner::Runner.new.run(build_job_logs_dir))
   rescue => e
     handle_errors(e, log_ids)
   end
 
-  def process_plugins_result(log_ids, logs, plugins_result)
+  def process_plugins_result(log_ids, logs, temporary_substitutions, plugins_result)
     grouped_logs = logs.index_by(&:id)
 
     affected_log_ids = plugins_result.keys.map { |filename| filename.sub('.log', '').to_i }
@@ -84,7 +112,7 @@ class ProcessLogsService < BaseLogsService
     process_unaffected_logs(unaffected_log_ids, grouped_logs) if unaffected_log_ids.present?
     return if affected_log_ids.blank?
 
-    CensorLogsService.call(affected_log_ids, grouped_logs, build_job_logs_dir, plugins_result)
+    CensorLogsService.call(temporary_substitutions, affected_log_ids, grouped_logs, build_job_logs_dir, plugins_result)
   end
 
   def process_unaffected_logs(unaffected_log_ids, grouped_logs)
