@@ -26,7 +26,7 @@ module Travis
       )
 
       s3_client.put_object(
-        bucket: archive_bucket,
+        bucket: Settings.aws.logs_archive_bucket,
         key: "scan_reports/#{log_id}.txt",
         body: JSON.dump(report_data)
       )
@@ -45,19 +45,16 @@ module Travis
     end
 
     def s3_client
-      @s3_client ||= Aws::S3::Client.new
-    end
-
-    def archive_bucket
-      @archive_bucket ||= [
-        Rails.env.staging? ? 'archive-staging' : 'archive',
-        ENV['HOST'].split('.')[-2, 2]
-      ].flatten.compact.join('.')
+      @s3_client ||= Aws::S3::Client.new(
+        region: Settings.aws.region,
+        access_key_id: Settings.aws.access_key_id,
+        secret_access_key: Settings.aws.secret_access_key
+      )
     end
 
     def file_options
       @file_options ||= {
-        bucket: archive_bucket,
+        bucket: Settings.aws.logs_archive_bucket,
         key: content_key
       }
     end
