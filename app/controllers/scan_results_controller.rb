@@ -3,6 +3,7 @@ class ScanResultsController < ApplicationController
     scan_results = ScanResult.where(repository_id: params[:repository_id])
                              .where(issues_found: 1..)
                              .where(created_at: Settings.scan_logs_availability_days.days.ago..)
+                             .order(created_at: :desc)
                              .page(params[:page])
                              .per(params[:limit])
 
