@@ -23,7 +23,9 @@ task manually_enqueue_processing_logs: :environment do
     abort('Either log ids or time frame must be provided')
   end
 
-  abort('Both start date and end date must be provided') if (options[:start_date].blank? || options[:end_date].blank?) && options[:log_ids].blank?
+  if (options[:start_date].blank? || options[:end_date].blank?) && options[:log_ids].blank?
+    abort('Both start date and end date must be provided')
+  end
 
   ManuallyEnqueueProcessingLogsService.call(options)
 end
