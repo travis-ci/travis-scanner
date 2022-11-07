@@ -11,8 +11,14 @@ class ProcessLogsService < BaseLogsService
     Rails.logger.info("Received log_ids: #{@log_ids.inspect}")
 
     Travis::Lock.exclusive('process_logs', lock_options) do
-      process_log_entries
+      logs = Log.queued.where(id: @log_ids).to_a
+      log_ids = logs.map(&:id)
+      return if log_ids.blank?
+
+      update_logs_status(log_ids, :started)
     end
+
+    process_log_entries logs
   rescue => e
     Rails.logger.error(e.message)
     Sentry.capture_exception(e)
@@ -20,14 +26,8 @@ class ProcessLogsService < BaseLogsService
 
   private
 
-  def process_log_entries
-    logs = Log.queued.where(id: @log_ids).to_a
-    log_ids = logs.map(&:id)
-    return if log_ids.blank?
-
+  def process_log_entries(logs)
     FileUtils.mkdir_p(build_job_logs_dir)
-
-    update_logs_status(log_ids, :started)
     process_logs(logs)
   ensure
     FileUtils.rm_rf(build_job_logs_dir)
