@@ -10,6 +10,7 @@ class ProcessLogsService < BaseLogsService
   def call
     Rails.logger.info("Received log_ids: #{@log_ids.inspect}")
 
+    logs = []
     Travis::Lock.exclusive('process_logs', lock_options) do
       logs = Log.queued.where(id: @log_ids).to_a
       log_ids = logs.map(&:id)
@@ -18,7 +19,7 @@ class ProcessLogsService < BaseLogsService
       update_logs_status(log_ids, :started)
     end
 
-    process_log_entries logs
+    process_log_entries(logs)
   rescue => e
     Rails.logger.error(e.message)
     Sentry.capture_exception(e)
