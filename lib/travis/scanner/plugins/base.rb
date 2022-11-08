@@ -42,13 +42,14 @@ module Travis
 
         def execute_plugin(logs_path)
           @scan_start_time = Time.zone.now
-          @plugin_stdin, @plugin_stdout, @plugin_stderr, @waiter_th = Open3.popen3(compute_command_line(logs_path))
+          exit_status = Open3.popen3(compute_command_line(logs_path)) do |stdin, stdout, stderr, waiter_th|
+            stdin.close
+            @plugin_stdout = stdout.read
+            @plugin_stderr = stderr.read
 
-          begin
-            Process.waitpid(@waiter_th.pid)
-          rescue Errno::ECHILD
-            # in case process exits very quickly
+            waiter_th.value
           end
+          raise "Exit code: #{exit_status.status}" unless exit_status.success?
 
           @scan_end_time = Time.zone.now
         end
