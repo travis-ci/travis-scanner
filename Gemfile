@@ -37,6 +37,10 @@ gem 'travis-lock', github: 'travis-ci/travis-lock'
 # Redlock is needed for travis-lock to work
 gem 'redlock'
 
+# Background jobs
+gem 'sidekiq-pro', require: 'sidekiq-pro', source: 'https://gems.contribsys.com'
+gem 'sidekiq-scheduler'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem 'debug'
