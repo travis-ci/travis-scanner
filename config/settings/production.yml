@@ -1,2 +1,1 @@
-sidekiq_username: <%= ENV.fetch('SIDEKIQ_USERNAME', 'admin') %>
-sidekiq_password: <%= ENV.fetch('SIDEKIQ_PASSWORD', SecureRandom.hex) %>
+travis_scanner_enabled: <%= ENV.fetch('TRAVIS_SCANNER_ENABLED', false).to_s =~ /^\s*(true|t|yes|y|1)\s*$/i %>

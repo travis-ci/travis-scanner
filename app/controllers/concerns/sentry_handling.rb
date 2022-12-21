@@ -12,6 +12,6 @@ module SentryHandling
   end
 
   def sentry_logging_enabled?
-    Settings.sentry_dsn.present?
+    Settings.sentry.dsn.present?
   end
 end
