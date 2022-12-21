@@ -63,6 +63,7 @@ end
 
 group :test do
   gem 'database_cleaner-active_record'
+  gem 'timecop'
   gem 'rspec-its'
   gem 'shoulda-matchers'
   gem 'rspec-json_expectations'
