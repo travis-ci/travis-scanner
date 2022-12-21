@@ -42,6 +42,15 @@ RUN bundle config https://gems.contribsys.com $bundle_gems__contribsys__com \
 
 FROM base
 
+RUN apk add --no-cache --update \
+                                python3 \
+                                curl && \
+    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin && \
+    wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
+    python3 /tmp/get-pip.py && \
+    pip install detect-secrets && \
+    rm /tmp/get-pip.py
+
 # Copy gems from builder
 COPY --from=builder /usr/local/bundle /usr/local/bundle
 

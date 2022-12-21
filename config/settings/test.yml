@@ -1,0 +1,3 @@
+travis_scanner_enabled: true
+
+queue_limit: 2
