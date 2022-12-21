@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/travis-ci/travis-lock.git
+  revision: faf5eef9f607505921d821e6cdf829583d630063
+  specs:
+    travis-lock (0.1.1)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -180,6 +186,8 @@ GEM
       redis-client (>= 0.9.0)
     redis-client (0.12.1)
       connection_pool
+    redlock (1.3.2)
+      redis (>= 3.0.0, < 6.0)
     thor (1.2.1)
     timeout (0.3.1)
     tzinfo (2.0.5)
@@ -200,6 +208,8 @@ DEPENDENCIES
   puma (~> 5.0)
   rails (~> 7.0.4)
   redis
+  redlock
+  travis-lock!
 
 RUBY VERSION
    ruby 3.2.0p0
