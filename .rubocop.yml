@@ -10,6 +10,7 @@ AllCops:
     - bin/**/*
     - config/**/*
     - db/schema.rb
+    - lib/tasks/auto_annotate_models.rake
     - vendor/**/*
     - config.ru
     - Rakefile
