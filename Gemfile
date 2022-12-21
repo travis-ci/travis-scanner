@@ -44,6 +44,11 @@ gem 'sidekiq-scheduler'
 # Logging
 gem 'lograge'
 
+# Sentry error reporting
+gem 'sentry-ruby'
+gem 'sentry-rails'
+gem 'sentry-sidekiq'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem 'debug'

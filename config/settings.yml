@@ -1,4 +1,7 @@
 redis:
   url: <%= ENV.fetch('REDIS_URL', 'redis://redis:6379/1') %>
 
+sentry:
+  dsn: <%= ENV['SENTRY_DSN'] %>
+
 sidekiq_concurrency: <%= ENV.fetch('SIDEKIQ_CONCURRENCY', 2) %>
