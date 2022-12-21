@@ -41,6 +41,9 @@ gem 'redlock'
 gem 'sidekiq-pro', require: 'sidekiq-pro', source: 'https://gems.contribsys.com'
 gem 'sidekiq-scheduler'
 
+# Logging
+gem 'lograge'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem 'debug'
