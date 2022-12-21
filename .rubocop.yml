@@ -1,6 +1,7 @@
 require:
   - rubocop-rails
   - rubocop-performance
+  - rubocop-rspec
 
 AllCops:
   TargetRubyVersion: 3.1
@@ -11,6 +12,8 @@ AllCops:
     - config/**/*
     - db/schema.rb
     - lib/tasks/auto_annotate_models.rake
+    - spec/rails_helper.rb
+    - spec/spec_helper.rb
     - vendor/**/*
     - config.ru
     - Rakefile
@@ -58,6 +61,7 @@ Metrics/BlockLength:
   Max: 50
   Exclude:
     - 'db/migrate/*'
+    - 'spec/**/*'
 
 Style/FrozenStringLiteralComment:
   Enabled: false
@@ -85,3 +89,18 @@ Naming/MethodParameterName:
 
 Bundler/OrderedGems:
   Enabled: false
+
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Max: 20
