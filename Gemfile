@@ -59,6 +59,7 @@ group :development do
   # gem 'spring'
 
   gem 'annotate'
+  gem 'brakeman', require: false
 end
 
 group :test do
