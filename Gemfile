@@ -62,6 +62,7 @@ group :development do
 end
 
 group :test do
+  gem 'database_cleaner-active_record'
   gem 'rspec-its'
   gem 'shoulda-matchers'
   gem 'rspec-json_expectations'
