@@ -42,6 +42,12 @@ module Travis
 
               logs[log_id][:scan_findings][scan_finding[:start_line]].push(new_finding)
             end
+
+            if result[:scan_secret].present?
+              logs[log_id][:scan_secrets] ||= []
+
+              logs[log_id][:scan_secrets] << result[:scan_secret].merge(plugin_name: scanner_result[:scanner_name])
+            end
           end
         end
 

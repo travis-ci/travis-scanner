@@ -4,6 +4,7 @@ FROM ruby:3.2.0-alpine as base
 
 # Install requirements to run the app
 RUN apk add --no-cache --update \
+                                git \
                                 libpq \
                                 tzdata
 
@@ -48,7 +49,7 @@ RUN apk add --no-cache --update \
     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin && \
     wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
     python3 /tmp/get-pip.py && \
-    pip install detect-secrets && \
+    pip install git+https://github.com/travis-ci/detect-secrets.git && \
     rm /tmp/get-pip.py
 
 # Copy gems from builder

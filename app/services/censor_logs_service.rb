@@ -32,6 +32,7 @@ class CensorLogsService < BaseLogsService
     findings = @plugins_result&.dig(filename, :scan_findings)
     # Shouldn't happen, because we're passing only the affected logs
     return if findings.blank?
+    secrets = @plugins_result&.dig(filename, :scan_secrets)
 
     Rails.logger.debug("Censoring | Reading file: #{filepath}")
     original_content = File.read(filepath)
@@ -44,6 +45,10 @@ class CensorLogsService < BaseLogsService
     Rails.logger.debug("Censoring | Processing findings")
     censored_content_lines = process_findings(content_lines, findings)
     Rails.logger.debug("Censoring | Processed findings")
+
+    Rails.logger.debug("Censoring | Processing secrets")
+    censored_content_lines = process_secrets(censored_content_lines, secrets, findings)
+    Rails.logger.debug("Censoring | Processed secrets")
 
     Rails.logger.debug("Censoring | Joining censored content lines")
     censored_content = censored_content_lines.join("\n")
@@ -111,6 +116,32 @@ class CensorLogsService < BaseLogsService
           content_lines[n] = '*' * line_length
         end
       end
+    end
+
+    content_lines
+  end
+
+  def process_secrets(content_lines, secrets, findings)
+    content_lines&.map&.with_index do |content_line, index|
+      secrets&.each do |scan_secret|
+        secret = scan_secret[:secret]
+
+        if content_line.include?(secret)
+          content_line.gsub!(secret, '*' * secret.length)
+
+          scan_secret[:finding_names].each do |finding_name|
+            start_line = (index + 1).to_s
+
+            findings[start_line] ||= []
+            findings[start_line] << {
+              plugin_name: scan_secret[:plugin_name],
+              finding_name: finding_name
+            }
+          end
+        end
+      end
+
+      content_line
     end
 
     content_lines

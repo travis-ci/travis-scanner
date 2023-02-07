@@ -48,9 +48,15 @@ module Travis
               end
             end
 
+            scan_secret = {
+              secret: json_results['secrets'],
+              finding_names: json_results['types']
+            }
+
             results << {
               log_id: json_results['filename'],
-              scan_findings: scan_findings
+              scan_findings: scan_findings,
+              scan_secret: scan_secret
             }
           end
 
