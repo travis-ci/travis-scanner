@@ -1,6 +1,6 @@
 ### Base ###
 
-FROM ruby:3.2.0-alpine as base
+FROM ruby:3.2.2-alpine as base
 
 # Install requirements to run the app
 RUN apk add --no-cache --update \
