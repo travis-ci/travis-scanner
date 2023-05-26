@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/travis-ci/travis-lock.git
-  revision: faf5eef9f607505921d821e6cdf829583d630063
+  revision: 50726dfc7f4a7775cb4366a9c2c119ba286bc19b
   specs:
     travis-lock (0.1.1)
 

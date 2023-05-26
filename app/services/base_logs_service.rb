@@ -6,7 +6,8 @@ class BaseLogsService < ApplicationService
       strategy: :redis,
       url: Settings.redis.url,
       ttl: 30 * 1000,
-      retries: 0
+      retries: 0,
+      threads: Settings.max_threads
     }
   end
 
