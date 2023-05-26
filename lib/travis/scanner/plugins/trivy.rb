@@ -123,7 +123,7 @@ module Travis
         protected
 
         def compute_command_line(logs_path)
-          "#{@plugin_scanner_cmd} filesystem -q --security-checks secret -f json #{logs_path}"
+          "#{@plugin_scanner_cmd} filesystem -q --scanners secret -f json #{logs_path}"
         end
 
         def parse_line(line)
