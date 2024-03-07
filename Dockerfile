@@ -48,7 +48,7 @@ RUN apk add --no-cache --update \
                                 py3-pip \
                                 curl && \
     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin && \
-    pip install git+https://github.com/travis-ci/detect-secrets.git
+    pip install git+https://github.com/travis-ci/detect-secrets.git --break-system-packages
 
 # Copy gems from builder
 COPY --from=builder /usr/local/bundle /usr/local/bundle
