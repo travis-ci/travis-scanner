@@ -1,0 +1,18 @@
+language: ruby
+
+dist: focal
+
+rvm: 3.2.2
+
+jobs:
+  include:
+    - stage: ":ship: it to quay.io"
+      dist: bionic
+      ruby:
+      services:
+      before_install: skip
+      install: skip
+      before_sript: skip
+      script: make ship
+      if: (branch = master and type = push ) OR commit_message =~ /ship:docker/ OR env(SHIP_DOCKER) = true
+
