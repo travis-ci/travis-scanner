@@ -13,8 +13,7 @@ if ENV["RAILS_LOG_LOGRAGE_ENABLED"].present?
         content_type: content_type,
         request_parameters: request_parameters,
         query_parameters: query_parameters,
-        path_parameters: path_parameters,
-        user_id: controller.current_user&.id
+        path_parameters: path_parameters
       }
     end
   end
