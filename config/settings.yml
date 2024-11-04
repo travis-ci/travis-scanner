@@ -2,6 +2,8 @@ max_threads: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
 redis:
   url: <%= ENV.fetch('REDIS_URL', 'redis://redis:6379/1') %>
+  ssl: <%= ENV.fetch('REDIS_SSL', false) %>
+ssl_verify: <%= ENV.fetch('SSL_VERIFY', true) %>
 
 aws:
   region: <%= ENV.fetch('TRAVIS_LOGS_AWS_REGION', 'us-east-1') %>
