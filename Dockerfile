@@ -47,7 +47,7 @@ RUN apk add --no-cache --update \
                                 python3 \
                                 py3-pip \
                                 curl && \
-    curl -sfL https://raw.githubusercontent.com/tonoyansergey-devt/trivy/refs/heads/71-log-scan/contrib/install.sh | sh -s -- -b /usr/local/bin && \
+    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin && \
     pip install git+https://github.com/travis-ci/detect-secrets.git@TBT-71-Update-repository --break-system-packages
 
 # Copy gems from builder
