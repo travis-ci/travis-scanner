@@ -1,4 +1,9 @@
 # Travis Scanner
+Travisscanner is a service designed to automate log file scanning and analysis. It ingests log files, processes them using various plugins (currently Trivy and Detect Secrets), identifies vulnerabilities and security issues, and stores the results in a database and S3. The service also updates log files with anonymized sensitive information and triggers notifications for failed scans.
+
+So any leaking secrets in job logs will be obfuscated/musked into estarics (*****), this improves security of TravisCI.
+
+
 
 ## Setup
 
