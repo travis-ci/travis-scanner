@@ -2,13 +2,22 @@ class BaseLogsService < ApplicationService
   private
 
   def lock_options
-    @lock_options ||= {
-      strategy: :redis,
-      url: Settings.redis.url,
-      ttl: 30 * 1000,
-      retries: 0,
-      threads: Settings.max_threads
-    }
+    @lock_options ||=
+      begin
+        options = {
+          strategy: :redis,
+          url: Settings.redis.url,
+          ttl: 30 * 1000,
+          retries: 0,
+          threads: Settings.max_threads
+        }
+        options[:ssl] ||= Settings.redis.ssl
+        options[:ca_path] ||= ENV['REDIS_SSL_CA_PATH'] if ENV['REDIS_SSL_CA_PATH']
+        options[:cert] ||= OpenSSL::X509::Certificate.new(File.read(ENV['REDIS_SSL_CERT_FILE'])) if ENV['REDIS_SSL_CERT_FILE']
+        options[:key] ||= OpenSSL::PKEY::RSA.new(File.read(ENV['REDIS_SSL_KEY_FILE'])) if ENV['REDIS_SSL_KEY_FILE']
+        options[:verify_mode] ||= OpenSSL::SSL::VERIFY_NONE if Settings.ssl_verify == false
+        options
+      end
   end
 
   def update_logs_status(log_ids, status)

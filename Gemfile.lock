@@ -1,8 +1,9 @@
 GIT
   remote: https://github.com/travis-ci/travis-lock.git
-  revision: 50726dfc7f4a7775cb4366a9c2c119ba286bc19b
+  revision: 535bbe651e1d407c58b1f1c7f521dd1d7a08691c
+  branch: ga-tbt151-redistls
   specs:
-    travis-lock (0.1.1)
+    travis-lock (0.2.0)
 
 GEM
   remote: https://gems.contribsys.com/
