@@ -33,7 +33,7 @@ gem 'bootsnap', require: false
 # Settings store
 gem 'config'
 
-gem 'travis-lock', github: 'travis-ci/travis-lock', branch: 'ga-tbt151-redistls'
+gem 'travis-lock', github: 'travis-ci/travis-lock'
 # Redlock is needed for travis-lock to work
 gem 'redlock'
 
