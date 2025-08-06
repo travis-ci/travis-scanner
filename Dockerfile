@@ -47,7 +47,9 @@ RUN apk add --no-cache --update \
                                 python3 \
                                 py3-pip \
                                 curl && \
+    # Install latest Trivy for improved secret detection
     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin && \
+    # Install Travis CI's detect-secrets fork with enhanced patterns
     pip install git+https://github.com/travis-ci/detect-secrets.git --break-system-packages
 
 # Copy gems from builder

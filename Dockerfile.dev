@@ -1,6 +1,8 @@
 FROM ruby:3.2.2-alpine
 
 # Install requirements to run the app
+# Security scanning tools: Trivy (latest) + detect-secrets (Travis CI fork)
+# Updated for improved AWS secret access key detection
 RUN apk add --no-cache --update \
                                 git \
                                 build-base \
